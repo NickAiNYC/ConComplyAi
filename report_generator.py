@@ -7,7 +7,7 @@ from config import BUSINESS_CONFIG, calculate_token_cost
 def generate_report(state: ConstructionState) -> ConstructionState:
     """
     Generate executive report with risk scoring and ROI calculation
-    Output: JSON structure ready for PDF rendering
+    Prints TOKEN_COST_USD after every call
     """
     try:
         # Calculate risk score (weighted by confidence and fine amount)
@@ -31,6 +31,9 @@ def generate_report(state: ConstructionState) -> ConstructionState:
         input_tokens = 500 + len(state.violations) * 50
         output_tokens = 800  # Executive summary
         cost = calculate_token_cost(input_tokens, output_tokens)
+        
+        # MANDATORY: Print token cost
+        print(f"[REPORT] TOKEN_COST_USD: ${cost:.6f} (in={input_tokens}, out={output_tokens})")
         
         # Update state
         state.risk_score = round(risk_score, 2)
