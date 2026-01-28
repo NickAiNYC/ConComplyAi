@@ -1,0 +1,39 @@
+groups:
+  - name: compliance_ai_alerts
+    interval: 30s
+    rules:
+      - alert: HighErrorRate
+        expr: error_rate > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Error rate exceeds 5%"
+          description: "{{ $labels.instance }} has error rate of {{ $value }}%"
+      
+      - alert: SlowProcessing
+        expr: p95_processing_time > 10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P95 processing time exceeds 10s"
+          description: "{{ $labels.instance }} p95 latency is {{ $value }}s"
+      
+      - alert: HighCost
+        expr: avg_cost_per_site > 0.04
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Cost per site exceeds budget"
+          description: "Average cost ${{ $value }} exceeds $0.04 budget"
+      
+      - alert: LowAccuracy
+        expr: accuracy_rate < 0.87
+        for: 30m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Detection accuracy below 87% target"
+          description: "Accuracy {{ $value }} below production threshold"
