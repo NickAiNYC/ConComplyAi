@@ -1,32 +1,37 @@
-"""Violation Detector Agent - Mock GPT-4o Vision with deterministic output"""
+"""Violation Detector Agent - Deterministic mock with token cost logging"""
 from typing import List
-import random
 from datetime import datetime
 from models import Violation, RiskLevel, AgentOutput, ConstructionState
 from config import (
     MockNYCApiClient, 
     calculate_token_cost, 
-    get_risk_level,
+    mock_vision_result,
     BUSINESS_CONFIG
 )
+from pybreaker import CircuitBreakerError
 
 
 def detect_violations(state: ConstructionState) -> ConstructionState:
     """
-    Mock GPT-4o Vision API - Deterministic violation detection
-    Demonstrates: Service abstraction, token tracking, error isolation
+    Deterministic violation detection using mock_vision_result
+    Prints TOKEN_COST_USD after every call
     """
-    # Seed for deterministic output in demos
-    random.seed(hash(state.site_id) % 2**32)
-    
     try:
-        # Mock vision analysis - deterministic based on site_id
-        violations = _mock_vision_analysis(state.site_id)
+        # Call deterministic mock vision API
+        vision_response = mock_vision_result(state.site_id)
         
-        # Mock token usage (realistic for image + prompt)
-        input_tokens = 1500  # Image tokens + prompt
-        output_tokens = len(violations) * 80  # ~80 tokens per violation
+        # Parse violations
+        violations = []
+        for v_data in vision_response["violations"]:
+            violations.append(Violation(**v_data))
+        
+        # Calculate cost
+        input_tokens = vision_response["input_tokens"]
+        output_tokens = vision_response["output_tokens"]
         cost = calculate_token_cost(input_tokens, output_tokens)
+        
+        # MANDATORY: Print token cost
+        print(f"[VISION] TOKEN_COST_USD: ${cost:.6f} (in={input_tokens}, out={output_tokens})")
         
         # Attempt to fetch permit data with circuit breaker
         permit_data = None
@@ -36,13 +41,10 @@ def detect_violations(state: ConstructionState) -> ConstructionState:
             try:
                 permit_data = api_client.get_permit_violations(state.site_id)
                 break
-            except ConnectionError as e:
+            except (ConnectionError, CircuitBreakerError) as e:
                 if attempt == BUSINESS_CONFIG["retry_limits"]["max_attempts"] - 1:
-                    # Circuit breaker open - use fallback
                     state.agent_errors.append(f"NYC API failed after {attempt+1} attempts: {str(e)}")
-                    # Continue with vision-only data
                 else:
-                    # Exponential backoff
                     import time
                     backoff = min(
                         BUSINESS_CONFIG["retry_limits"]["backoff_base"] ** attempt,
@@ -82,50 +84,3 @@ def detect_violations(state: ConstructionState) -> ConstructionState:
         ))
     
     return state
-
-
-def _mock_vision_analysis(site_id: str) -> List[Violation]:
-    """
-    Deterministic mock of GPT-4o Vision analysis
-    Production signal: Prompt includes cost-awareness instruction
-    """
-    # Deterministic output based on site_id hash
-    seed_val = hash(site_id) % 100
-    
-    violations = []
-    
-    # Hudson Yards style site - multiple high-value violations
-    if seed_val < 30:  # 30% have critical violations
-        violations.append(Violation(
-            violation_id=f"{site_id}-V001",
-            category="Structural Safety",
-            description="Unsecured scaffolding on 45+ story building, immediate collapse risk",
-            confidence=0.94,
-            risk_level=RiskLevel.CRITICAL,
-            estimated_fine=75000,
-            location="Exterior South Face, Floor 45"
-        ))
-    
-    if seed_val < 60:  # 60% have high-risk violations
-        violations.append(Violation(
-            violation_id=f"{site_id}-V002",
-            category="Fall Protection",
-            description="Missing guardrails at roof edge, OSHA 1926.501 violation",
-            confidence=0.88,
-            risk_level=RiskLevel.HIGH,
-            estimated_fine=25000,
-            location="Roof Perimeter, North Section"
-        ))
-    
-    if seed_val < 85:  # 85% have medium violations
-        violations.append(Violation(
-            violation_id=f"{site_id}-V003",
-            category="Site Management",
-            description="Debris accumulation blocking fire exit route",
-            confidence=0.65,
-            risk_level=RiskLevel.MEDIUM,
-            estimated_fine=5000,
-            location="Ground Level, Exit C"
-        ))
-    
-    return violations
