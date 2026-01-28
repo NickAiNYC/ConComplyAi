@@ -1,8 +1,10 @@
 # 🏗️ Construction Compliance AI
 
+![CI Status](https://github.com/your-username/construction-compliance-ai/actions/workflows/ci.yml/badge.svg)
+
 > **$1.49M saved per critical violation • 30 days → 2 hours • 87% accuracy**
 
-AI-powered construction site compliance system that detects OSHA and NYC Building Code violations using GPT-4o Vision and LangGraph orchestration. Production-grade implementation with cost telemetry, circuit breakers, and deterministic testing.
+AI-powered construction site compliance system with deterministic mocks, circuit breakers, and production-grade observability. Detects OSHA and NYC Building Code violations using mock GPT-4o Vision with LangGraph orchestration.
 
 ---
 
@@ -51,24 +53,27 @@ pytest validation/test_production_metrics.py -v
 construction-compliance-ai/
 ├── core/
 │   ├── supervisor.py           # LangGraph StateGraph orchestration
+│   ├── model_registry.py       # ⭐ NEW: A/B model routing
+│   ├── api.py                  # ⭐ NEW: /health endpoint
 │   ├── agents/
-│   │   ├── violation_detector.py   # Mock GPT-4o Vision + NYC DOB API
-│   │   └── report_generator.py     # Risk scoring + cost analysis
+│   │   ├── violation_detector.py   # Deterministic mock + pybreaker
+│   │   └── report_generator.py     # Risk scoring + token logging
 │   ├── models.py                # Pydantic type-safe contracts
-│   ├── config.py                # MockNYCApiClient (23% failure rate)
-│   └── docker-compose.yml       # Redis + Prometheus + App
+│   └── config.py                # mock_vision_result + circuit breaker
 ├── validation/
-│   ├── demo_scenario.json       # Hudson Yards test case
-│   ├── business_case_calculations.md  # ROI analysis
-│   ├── metrics_dashboard.py     # Streamlit observability
-│   └── test_production_metrics.py     # Production readiness tests
+│   ├── test_production_metrics.py  # 10 tests, seed=42
+│   ├── load_test.py                # ⭐ NEW: 100 concurrent, p95<5s
+│   ├── chaos_test.py               # ⭐ NEW: Redis failure resilience
+│   ├── metrics_dashboard.py        # Streamlit observability
+│   └── business_case_calculations.md
 └── docs/
-    ├── ARCHITECTURE_DECISIONS.md      # 5 key tech choices + business impact
-    ├── API_INTEGRATION_STRATEGY.md    # Circuit breaker for 23% downtime
-    └── SCALING_TO_1000_SITES.md       # Bottleneck analysis + async queue
+    ├── PROJECT_JOURNEY.md              # ⭐ NEW: 3 key lessons
+    ├── INTERVIEW_TALKING_POINTS.md     # ⭐ NEW: Recruiter answers
+    ├── ARCHITECTURE_DECISIONS.md
+    └── SCALING_TO_1000_SITES.md
 ```
 
-**Total lines of core code:** ~380 (excluding tests/docs)
+**Total: 500 lines core code • 12 packages • 0 API keys needed**
 
 ---
 
