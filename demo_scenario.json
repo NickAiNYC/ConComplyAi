@@ -1,0 +1,90 @@
+{
+  "scenario_name": "Hudson Yards High-Rise Compliance Check",
+  "site_id": "SITE-HY-001",
+  "image_url": "mock://hudson-yards-construction.jpg",
+  "expected_outcomes": {
+    "violations_detected": 3,
+    "risk_score": 47.5,
+    "estimated_savings": 91350.0,
+    "critical_violations": 1,
+    "processing_time_target": "< 5 seconds",
+    "cost_target": "< $0.04"
+  },
+  "state_evolution": {
+    "initial_state": {
+      "site_id": "SITE-HY-001",
+      "violations": [],
+      "total_tokens": 0,
+      "total_cost": 0.0,
+      "agent_outputs": [],
+      "agent_errors": []
+    },
+    "after_violation_detection": {
+      "violations": [
+        {
+          "violation_id": "SITE-HY-001-V001",
+          "category": "Structural Safety",
+          "description": "Unsecured scaffolding on 45+ story building, immediate collapse risk",
+          "confidence": 0.94,
+          "risk_level": "CRITICAL",
+          "estimated_fine": 75000,
+          "location": "Exterior South Face, Floor 45"
+        },
+        {
+          "violation_id": "SITE-HY-001-V002",
+          "category": "Fall Protection",
+          "description": "Missing guardrails at roof edge, OSHA 1926.501 violation",
+          "confidence": 0.88,
+          "risk_level": "HIGH",
+          "estimated_fine": 25000,
+          "location": "Roof Perimeter, North Section"
+        },
+        {
+          "violation_id": "SITE-HY-001-V003",
+          "category": "Site Management",
+          "description": "Debris accumulation blocking fire exit route",
+          "confidence": 0.65,
+          "risk_level": "MEDIUM",
+          "estimated_fine": 5000,
+          "location": "Ground Level, Exit C"
+        }
+      ],
+      "total_tokens": 1740,
+      "total_cost": 0.0014375,
+      "permit_data": {
+        "permit_number": "BLD-2024-85432",
+        "status": "ACTIVE",
+        "violations_on_record": 2
+      }
+    },
+    "final_state": {
+      "risk_score": 47.5,
+      "estimated_savings": 91350.0,
+      "total_tokens": 2790,
+      "total_cost": 0.0023125,
+      "processing_time": "2.3s",
+      "agent_outputs": [
+        {
+          "agent_name": "violation_detector",
+          "status": "success",
+          "tokens_used": 1740,
+          "usd_cost": 0.0014375
+        },
+        {
+          "agent_name": "report_generator",
+          "status": "success",
+          "tokens_used": 1050,
+          "usd_cost": 0.000875
+        }
+      ]
+    }
+  },
+  "business_impact": {
+    "baseline_cost_30_days": "Manual inspection team: $45,000",
+    "ai_cost_per_1000_sites": "$3.20",
+    "time_saved": "30 days → 2 hours",
+    "roi_per_critical_violation": "$1,245,000 (87% of $1.49M expected fine)",
+    "accuracy": "87%",
+    "false_positive_rate": "13%"
+  }
+}
