@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    container_name: compliance-ai
+    ports:
+      - "8501:8501"  # Streamlit dashboard
+    volumes:
+      - ../core:/app/core
+      - ../validation:/app/validation
+    environment:
+      - PYTHONUNBUFFERED=1
+      - REDIS_HOST=redis
+      - PROMETHEUS_PORT=9090
+    depends_on:
+      - redis
+      - prometheus
+    command: ["streamlit", "run", "validation/metrics_dashboard.py", "--server.port=8501", "--server.address=0.0.0.0"]
+
+  redis:
+    image: redis:7-alpine
+    container_name: compliance-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: compliance-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+
+networks:
+  default:
+    name: compliance-network
