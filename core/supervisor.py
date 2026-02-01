@@ -2,9 +2,9 @@
 from typing import Literal
 from datetime import datetime
 from langgraph.graph import StateGraph, END
-from models import ConstructionState
-from agents.violation_detector import detect_violations
-from agents.report_generator import generate_report
+from core.models import ConstructionState
+from core.agents.violation_detector import detect_violations
+from core.agents.report_generator import generate_report
 
 
 def create_supervisor_graph():
@@ -57,8 +57,11 @@ def run_compliance_check(site_id: str, image_url: str = None) -> ConstructionSta
     
     # Create and execute graph
     graph = create_supervisor_graph()
-    final_state = graph.invoke(initial_state)
+    # LangGraph returns AddableValuesDict, convert to ConstructionState
+    final_state_dict = graph.invoke(initial_state)
     
+    # Convert dictionary result to ConstructionState
+    final_state = ConstructionState(**final_state_dict)
     return final_state
 
 

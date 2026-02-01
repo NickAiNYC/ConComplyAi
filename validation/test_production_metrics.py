@@ -3,9 +3,8 @@ import pytest
 import sys
 import time
 import random
-sys.path.insert(0, '/mnt/user-data/outputs/construction-compliance-ai/core')
-from supervisor import run_compliance_check, run_batch_compliance
-from config import BUSINESS_CONFIG
+from core.supervisor import run_compliance_check, run_batch_compliance
+from core.config import BUSINESS_CONFIG
 
 
 # Set global seed for deterministic tests

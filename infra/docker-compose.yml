@@ -3,14 +3,14 @@ version: '3.8'
 services:
   app:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: infra/Dockerfile
     container_name: compliance-ai
     ports:
       - "8501:8501"  # Streamlit dashboard
     volumes:
-      - ./core:/app/core
-      - ./validation:/app/validation
+      - ../core:/app/core
+      - ../validation:/app/validation
     environment:
       - PYTHONUNBUFFERED=1
       - REDIS_HOST=redis

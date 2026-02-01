@@ -1,10 +1,8 @@
 """Chaos Test - Kill Redis mid-run, verify zero data loss"""
-import sys
 import time
 import subprocess
 
-sys.path.insert(0, '/mnt/user-data/outputs/construction-compliance-ai/core')
-from supervisor import run_compliance_check
+from core.supervisor import run_compliance_check
 
 
 def chaos_test_redis_failure():

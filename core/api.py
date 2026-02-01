@@ -1,10 +1,7 @@
 """FastAPI Health Endpoint - Production observability"""
 from fastapi import FastAPI, Response
 from datetime import datetime
-import sys
-
-sys.path.insert(0, '/mnt/user-data/outputs/construction-compliance-ai/core')
-from config import BUSINESS_CONFIG
+from core.config import BUSINESS_CONFIG
 
 app = FastAPI(title="Construction Compliance AI", version="1.0.0")
 

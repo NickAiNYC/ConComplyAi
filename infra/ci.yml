@@ -26,19 +26,16 @@ jobs:
     
     - name: Run production tests
       run: |
-        cd construction-compliance-ai
-        export PYTHONPATH=$PWD/core:$PWD/validation:$PYTHONPATH
+        export PYTHONPATH=$PWD:$PYTHONPATH
         pytest validation/test_production_metrics.py -v --tb=short
       timeout-minutes: 3
     
     - name: Validate cost targets
       run: |
-        cd construction-compliance-ai
+        export PYTHONPATH=$PWD:$PYTHONPATH
         python -c "
-        import sys
-        sys.path.insert(0, 'core')
-        from supervisor import run_compliance_check
+        from core.supervisor import run_compliance_check
         result = run_compliance_check('CI-TEST-001')
         assert result.total_cost <= 0.04, f'Cost {result.total_cost} exceeds budget'
-        print(f'✓ Cost check passed: ${result.total_cost:.4f}')
+        print(f'✓ Cost check passed: \${result.total_cost:.4f}')
         "

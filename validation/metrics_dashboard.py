@@ -3,10 +3,8 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import sys
-sys.path.insert(0, '/home/claude/construction-compliance-ai/core')
-from supervisor import run_batch_compliance
-from config import BUSINESS_CONFIG
+from core.supervisor import run_batch_compliance
+from core.config import BUSINESS_CONFIG
 
 st.set_page_config(page_title="Compliance AI Metrics", layout="wide")
 

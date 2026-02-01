@@ -1,12 +1,10 @@
 """Load Test - 100 concurrent sites, assert p95 < 5s"""
 import asyncio
 import time
-import sys
 from typing import List
 import statistics
 
-sys.path.insert(0, '/mnt/user-data/outputs/construction-compliance-ai/core')
-from supervisor import run_compliance_check
+from core.supervisor import run_compliance_check
 
 
 async def process_site_async(site_id: str) -> float:

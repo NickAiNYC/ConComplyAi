@@ -1,8 +1,9 @@
 """Config and Mock API clients - Production-style service abstraction"""
+import os
 import random
 import time
 from typing import Optional, Dict, Any, List
-from models import PermitData, RiskLevel
+from core.models import PermitData, RiskLevel
 from datetime import datetime, timedelta
 from pybreaker import CircuitBreaker
 
@@ -12,8 +13,8 @@ def mock_vision_result(photo_id: str) -> Dict[str, Any]:
     Deterministic mock of GPT-4o Vision API - always returns same result for same photo_id
     Achieves 87% accuracy through carefully balanced violation detection
     """
-    # Deterministic seed based on photo_id
-    seed = hash(photo_id) % 100
+    # Deterministic seed based on photo_id - use sum of char codes for determinism
+    seed = sum(ord(c) for c in photo_id) % 100
     random.seed(seed)
     
     violations = []
@@ -66,15 +67,18 @@ def mock_vision_result(photo_id: str) -> Dict[str, Any]:
 
 
 class MockNYCApiClient:
-    """Mock NYC DOB/HPD API with realistic latency and 23% failure rate"""
+    """Mock NYC DOB/HPD API with realistic latency and configurable failure rate"""
     
-    def __init__(self, failure_rate: float = 0.23):
-        self.failure_rate = failure_rate
+    def __init__(self, failure_rate: float = None):
+        # Load from environment variables with fallback defaults
+        self.failure_rate = failure_rate if failure_rate is not None else float(os.getenv('MOCK_FAILURE_RATE', '0.23'))
+        self.latency_min = float(os.getenv('MOCK_LATENCY_MIN', '0.05'))
+        self.latency_max = float(os.getenv('MOCK_LATENCY_MAX', '0.2'))
         self.call_count = 0
         # Circuit breaker: 3 failures → opens, 30s timeout
         self.circuit_breaker = CircuitBreaker(
             fail_max=3,
-            timeout_duration=30,
+            reset_timeout=30,
             name="NYC_DOB_API"
         )
         
@@ -83,10 +87,10 @@ class MockNYCApiClient:
         self.call_count += 1
         
         def _api_call():
-            # Simulate network latency 50-200ms
-            time.sleep(random.uniform(0.05, 0.2))
+            # Simulate network latency with configurable range
+            time.sleep(random.uniform(self.latency_min, self.latency_max))
             
-            # 23% failure rate
+            # Configurable failure rate
             if random.random() < self.failure_rate:
                 raise ConnectionError(f"NYC API unavailable for site {site_id}")
             
