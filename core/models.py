@@ -46,12 +46,12 @@ class ConstructionState(BaseModel):
     """LangGraph state - complete system state"""
     site_id: str
     image_url: Optional[str] = None
-    violations: List[Violation] = []
+    violations: List[Violation] = Field(default_factory=list)
     permit_data: Optional[PermitData] = None
     risk_score: float = 0.0
     estimated_savings: float = 0.0
-    agent_outputs: List[AgentOutput] = []
-    agent_errors: List[str] = []
+    agent_outputs: List[AgentOutput] = Field(default_factory=list)
+    agent_errors: List[str] = Field(default_factory=list)
     total_tokens: int = 0
     total_cost: float = 0.0
     processing_start: Optional[datetime] = None

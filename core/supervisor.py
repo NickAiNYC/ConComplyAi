@@ -57,8 +57,11 @@ def run_compliance_check(site_id: str, image_url: str = None) -> ConstructionSta
     
     # Create and execute graph
     graph = create_supervisor_graph()
-    final_state = graph.invoke(initial_state)
+    # LangGraph returns AddableValuesDict, convert to ConstructionState
+    final_state_dict = graph.invoke(initial_state)
     
+    # Convert dictionary result to ConstructionState
+    final_state = ConstructionState(**final_state_dict)
     return final_state
 
 

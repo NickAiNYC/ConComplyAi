@@ -13,8 +13,8 @@ def mock_vision_result(photo_id: str) -> Dict[str, Any]:
     Deterministic mock of GPT-4o Vision API - always returns same result for same photo_id
     Achieves 87% accuracy through carefully balanced violation detection
     """
-    # Deterministic seed based on photo_id
-    seed = hash(photo_id) % 100
+    # Deterministic seed based on photo_id - use sum of char codes for determinism
+    seed = sum(ord(c) for c in photo_id) % 100
     random.seed(seed)
     
     violations = []
@@ -78,7 +78,7 @@ class MockNYCApiClient:
         # Circuit breaker: 3 failures → opens, 30s timeout
         self.circuit_breaker = CircuitBreaker(
             fail_max=3,
-            timeout_duration=30,
+            reset_timeout=30,
             name="NYC_DOB_API"
         )
         
