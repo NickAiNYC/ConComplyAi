@@ -39,7 +39,7 @@ Both services will be created and deployed automatically:
    - `NODE_VERSION`: `18.18.0`
 5. Click "Create Static Site"
 
-#### Backend (Web Service)
+#### Backend API (Web Service)
 
 1. Click "New" → "Web Service"
 2. Connect repository: `NickAiNYC/ConComplyAi`
@@ -47,11 +47,12 @@ Both services will be created and deployed automatically:
    - **Name**: `concomplai-api`
    - **Branch**: `main` (or your preferred branch)
    - **Runtime**: `Python 3`
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `uvicorn core.api:app --host 0.0.0.0 --port $PORT`
+   - **Build Command**: `pip install -r requirements.txt && pip install -r backend/requirements.txt`
+   - **Start Command**: `./entrypoint.sh` (or `SERVICE_TYPE=api uvicorn core.api:app --host 0.0.0.0 --port $PORT`)
 4. Add environment variables:
    - `PYTHON_VERSION`: `3.12.0`
    - `PYTHONUNBUFFERED`: `1`
+   - `SERVICE_TYPE`: `api`
    - (Optional) Mock configuration if needed:
      - `MOCK_FAILURE_RATE`: `0.23`
      - `MOCK_LATENCY_MIN`: `0.05`
@@ -59,6 +60,27 @@ Both services will be created and deployed automatically:
 5. Configure health check:
    - **Path**: `/health`
 6. Click "Create Web Service"
+
+#### Celery Worker (Background Worker) - Optional
+
+For async task processing (violation scanning, report generation, webhooks):
+
+1. Click "New" → "Background Worker"
+2. Connect repository: `NickAiNYC/ConComplyAi`
+3. Configure:
+   - **Name**: `concomplai-worker`
+   - **Branch**: `main` (or your preferred branch)
+   - **Runtime**: `Python 3`
+   - **Build Command**: `pip install -r requirements.txt && pip install -r backend/requirements.txt`
+   - **Start Command**: `SERVICE_TYPE=worker ./entrypoint.sh`
+4. Add Redis add-on:
+   - Go to service settings → "Redis" → "Add Redis"
+   - This automatically sets `REDIS_URL` environment variable
+5. Add environment variables:
+   - `PYTHON_VERSION`: `3.12.0`
+   - `PYTHONUNBUFFERED`: `1`
+   - `SERVICE_TYPE`: `worker`
+6. Click "Create Background Worker"
 
 ## Environment Variables
 
@@ -68,6 +90,15 @@ Both services will be created and deployed automatically:
 ### Backend (Required)
 - `PYTHON_VERSION`: `3.12.0` (specified in `.python-version`)
 - `PYTHONUNBUFFERED`: `1` (for proper logging)
+- `PORT`: Set automatically by Render (default: 10000)
+- `SERVICE_TYPE`: Service to run - Options: `api`, `worker`, `both` (default: `api`)
+
+### Backend - Redis/Celery (Required for async tasks)
+- `REDIS_URL`: Redis connection URL (format: `redis://hostname:port/db`)
+  - Render automatically sets this when you add a Redis add-on
+  - Example: `redis://red-abc123:6379/0`
+- `CELERY_BROKER_URL`: Optional - defaults to REDIS_URL
+- `CELERY_RESULT_BACKEND`: Optional - defaults to REDIS_URL
 
 ### Backend (Optional - Testing/Demo)
 These can be configured through Render's environment variable UI:
