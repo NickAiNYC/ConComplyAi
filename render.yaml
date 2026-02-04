@@ -1,8 +1,7 @@
 services:
   # React Frontend - Static Site
-  - type: web
+  - type: static
     name: concomplai-frontend
-    runtime: static
     buildCommand: npm install && npm run build
     staticPublishPath: ./build
     envVars:
