@@ -10,7 +10,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from celery import Celery
-from backend import celery_config
+from . import celery_config
 
 # Initialize Celery app
 app = Celery('concomplai')

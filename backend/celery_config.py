@@ -28,7 +28,7 @@ task_queues = (
 )
 
 # Task result settings
-result_expires = 3600  # 1 hour
+result_expires = int(os.getenv('CELERY_RESULT_EXPIRES', '86400'))  # 24 hours (configurable)
 task_track_started = True
 task_ignore_result = False
 

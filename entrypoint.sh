@@ -54,7 +54,9 @@ case "$SERVICE_TYPE" in
     both)
         log_info "Starting both API server and Celery worker"
         
-        # Start API server in background
+        # Start API server in background with reduced workers for shared resource mode
+        # Note: Using 1 worker to conserve resources when running alongside Celery
+        # For production with dedicated services, use SERVICE_TYPE=api with --workers 2+
         log_info "Starting FastAPI server on port $PORT (background)"
         uvicorn core.api:app --host 0.0.0.0 --port "$PORT" --workers 1 &
         API_PID=$!

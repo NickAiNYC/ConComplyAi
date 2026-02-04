@@ -40,7 +40,8 @@ def generate_site_report(
     try:
         logger.info(f"Generating {report_format} report for site: {site_id}")
         
-        # Import here to avoid circular dependencies
+        # Import inside task to avoid circular dependencies at module load time
+        # (allows core modules to import tasks without creating import cycles)
         from core.agents.report_generator import ReportGenerator
         
         generator = ReportGenerator()

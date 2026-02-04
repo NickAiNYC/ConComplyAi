@@ -34,7 +34,8 @@ def scan_site(self, site_id: str, image_url: str = None) -> Dict[str, Any]:
     try:
         logger.info(f"Starting violation scan for site: {site_id}")
         
-        # Import here to avoid circular dependencies
+        # Import inside task to avoid circular dependencies at module load time
+        # (celery_worker imports tasks, tasks shouldn't import celery_worker)
         from core.supervisor import run_compliance_check
         
         # Run compliance check
