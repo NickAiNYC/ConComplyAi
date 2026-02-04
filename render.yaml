@@ -24,10 +24,4 @@ services:
         value: 3.12.0
       - key: PYTHONUNBUFFERED
         value: 1
-      - key: MOCK_FAILURE_RATE
-        value: 0.23
-      - key: MOCK_LATENCY_MIN
-        value: 0.05
-      - key: MOCK_LATENCY_MAX
-        value: 0.2
     healthCheckPath: /health
