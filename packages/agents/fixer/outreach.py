@@ -32,6 +32,12 @@ from packages.core.audit import (
 from packages.core.telemetry import track_agent_cost
 
 
+# Cost constants for transparent cost model
+TEMPLATE_GENERATION_COST_USD = 0.0001  # Minimal cost for template-based email generation
+DEFICIENCY_REPORT_INPUT_TOKENS = 200   # Average tokens for reading deficiency report
+EMAIL_DRAFT_OUTPUT_TOKENS = 400         # Average tokens for drafting email
+
+
 class DeficiencyReport(BaseModel):
     """
     Structured deficiency report from Guard Agent
@@ -266,11 +272,11 @@ class OutreachAgent:
         )
         
         # Token usage estimation (email drafting uses minimal LLM calls)
-        input_tokens = 200   # Reading deficiency report
-        output_tokens = 400  # Drafting email
+        input_tokens = DEFICIENCY_REPORT_INPUT_TOKENS
+        output_tokens = EMAIL_DRAFT_OUTPUT_TOKENS
         
         # Calculate cost
-        cost_usd = 0.0001  # Minimal cost for template-based generation
+        cost_usd = TEMPLATE_GENERATION_COST_USD
         
         # Create FixerOutput conforming to AgentOutputProtocol
         fixer_output = FixerOutput(
@@ -525,11 +531,11 @@ Project Team
         
         # Token usage estimation (email drafting uses minimal LLM calls)
         # For rule-based drafting, we use minimal tokens
-        input_tokens = 200   # Reading deficiency report
-        output_tokens = 400  # Drafting email
+        input_tokens = DEFICIENCY_REPORT_INPUT_TOKENS
+        output_tokens = EMAIL_DRAFT_OUTPUT_TOKENS
         
         # Calculate cost (will be overridden by decorator if used)
-        cost_usd = 0.0001  # Minimal cost for template-based generation
+        cost_usd = TEMPLATE_GENERATION_COST_USD
         
         # Create FixerOutput conforming to AgentOutputProtocol
         fixer_output = FixerOutput(

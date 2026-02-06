@@ -14,6 +14,7 @@ WORKFLOW:
 5. Complete audit chain is verified and logged
 """
 
+import time
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 from pathlib import Path
@@ -79,6 +80,8 @@ class WorkflowManager:
             - audit_chain: Complete audit chain
             - pipeline_outcome: Final outcome status
         """
+        start_time = time.time()
+        
         # STEP 1: Guard validates COI
         guard_result = validate_coi(
             pdf_path=coi_pdf_path,
@@ -117,6 +120,9 @@ class WorkflowManager:
             elif compliance_result.status == "ILLEGIBLE":
                 pipeline_outcome = "REJECTED"
         
+        # Calculate actual processing time
+        processing_time = time.time() - start_time
+        
         # STEP 4: Build audit chain
         total_cost = guard_result["cost_usd"]
         if fixer_result:
@@ -126,7 +132,7 @@ class WorkflowManager:
             project_id=opportunity.to_project_id(),
             chain_links=chain_links,
             total_cost_usd=total_cost,
-            processing_time_seconds=0.5,  # Mock timing
+            processing_time_seconds=processing_time,
             outcome=pipeline_outcome
         )
         
