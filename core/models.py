@@ -208,6 +208,7 @@ class DocumentExtractionState(BaseModel):
     
     # Quality checks
     document_quality_score: float = Field(
+        default=1.0,
         ge=0.0, le=1.0,
         description="Quality score: skew, blur, contrast"
     )
