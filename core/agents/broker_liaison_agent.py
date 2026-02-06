@@ -4,9 +4,14 @@ BrokerLiaison Agent - Task 1: The Outreach Bridge
 Drafts insurance endorsement requests to fix compliance gaps.
 Triggered when user clicks 'Fix Compliance' on a ScopeSignal lead.
 
+NYC 2027 COMPLIANCE: All outreach requires Legal Sandbox approval
+- Scans for strict liability triggers
+- Generates GovernanceProof before sending
+- Blocks sending if triggers detected
+
 Integrates with ConComply-Scope Suite 2027 standards.
 """
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from datetime import datetime
 import hashlib
 
@@ -18,15 +23,22 @@ from packages.core import (
     DecisionProof,
     AgentHandshake
 )
+from packages.monitoring import (
+    get_legal_sandbox,
+    GovernanceProof,
+    LegalSandboxStatus
+)
 
 
 class BrokerLiaisonAgent:
     """
     Agent responsible for drafting endorsement requests to insurance brokers
     based on detected compliance gaps and agency requirements.
+    
+    NYC 2027: Integrates Legal Sandbox for liability protection
     """
     
-    AGENT_ID = "BrokerLiaison-v2.0"
+    AGENT_ID = "BrokerLiaison-v2.1-LegalSandbox"
     
     # Agency-specific endorsement requirements
     AGENCY_ENDORSEMENTS = {
@@ -103,6 +115,24 @@ class BrokerLiaisonAgent:
         # Draft email content
         subject, body = self._draft_email(signal, required_endorsements, urgency)
         
+        # NYC 2027: Legal Sandbox scan for strict liability triggers
+        legal_sandbox = get_legal_sandbox()
+        recipient_email = (
+            signal.broker_contact.broker_email.value 
+            if signal.broker_contact.broker_email 
+            else "unknown@broker.com"
+        )
+        
+        proof_id = f"PROOF-{signal.signal_id}-{datetime.now().timestamp()}"
+        governance_proof = legal_sandbox.scan_content(
+            proof_id=proof_id,
+            content_type="endorsement_request",
+            subject_line=subject,
+            body_text=body,
+            recipient_email=recipient_email,
+            nyc_codes=["RCNY §101-08"]  # NYC insurance codes
+        )
+        
         # Create agent handshake for governance audit (Task 3)
         handshake = AgentHandshake(
             from_agent=from_agent,
@@ -114,16 +144,33 @@ class BrokerLiaisonAgent:
                 "project_id": signal.project_id,
                 "missing_endorsements": signal.missing_endorsements,
                 "insurance_gaps": signal.insurance_gaps,
-                "agency_requirements": [a.value for a in signal.agency_requirements]
+                "agency_requirements": [a.value for a in signal.agency_requirements],
+                "legal_sandbox_status": governance_proof.sandbox_status.value
             },
             validation_status="handoff_validated"
         )
+        
+        # Update decision proof reasoning to include legal sandbox
+        reasoning_chain = [
+            f"Detected {len(signal.insurance_gaps)} insurance gaps",
+            f"Project requires {len(signal.agency_requirements)} agency endorsements",
+            f"Broker contact validated: {signal.broker_contact.has_valid_contact()}",
+            f"Urgency level: {urgency}",
+            f"Drafted {len(required_endorsements)} endorsement requests",
+            f"Legal Sandbox: {governance_proof.sandbox_status.value}",
+            f"Triggers detected: {len(governance_proof.triggers_detected)}",
+            f"Risk score: {governance_proof.risk_score:.1f}/10"
+        ]
+        
+        # Add warning if sending is blocked
+        if governance_proof.send_blocked:
+            reasoning_chain.append(f"⚠️ SENDING BLOCKED: {governance_proof.block_reason}")
         
         # Create decision proof for XAI
         decision_proof = DecisionProof(
             agent_id=self.AGENT_ID,
             timestamp=datetime.now(),
-            logic_citation="ConComply-Scope Outreach Bridge Policy 2027",
+            logic_citation="ConComply-Scope Outreach Bridge Policy 2027; NYC Legal Sandbox",
             confidence_score=0.95,
             decision_type="outreach",
             input_data={
@@ -131,16 +178,11 @@ class BrokerLiaisonAgent:
                 "project_name": signal.project_name,
                 "contractor": signal.contractor_name,
                 "agencies": [a.value for a in signal.agency_requirements],
-                "gaps": signal.insurance_gaps
+                "gaps": signal.insurance_gaps,
+                "governance_proof_id": proof_id
             },
             output_action=f"Draft endorsement request to {signal.broker_contact.broker_name.value}",
-            reasoning_chain=[
-                f"Detected {len(signal.insurance_gaps)} insurance gaps",
-                f"Project requires {len(signal.agency_requirements)} agency endorsements",
-                f"Broker contact validated: {signal.broker_contact.has_valid_contact()}",
-                f"Urgency level: {urgency}",
-                f"Drafted {len(required_endorsements)} endorsement requests"
-            ],
+            reasoning_chain=reasoning_chain,
             agent_handshake=handshake
         )
         
