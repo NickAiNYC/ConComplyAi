@@ -357,7 +357,8 @@ def _detect_pii(fields: List[ExtractedField]) -> List[PIIRedaction]:
         # Check for email
         if email_pattern.search(value_str):
             original_hash = hashlib.sha256(value_str.encode()).hexdigest()
-            redacted = re.sub(r'([A-Za-z0-9])[A-Za-z0-9._%+-]*@([A-Za-z0-9.-]+\.[A-Z|a-z]{2,})', r'\1***@\2', value_str)
+            # More secure redaction - mask entire email
+            redacted = '***@***'
             pii_redactions.append(PIIRedaction(
                 field_name=field.field_name,
                 original_value_hash=original_hash,

@@ -153,7 +153,7 @@ class TestPIIRedaction:
         
         assert len(redactions) == 1, "Should detect 1 email"
         assert redactions[0].pii_type == "Email"
-        assert "***@" in redactions[0].redacted_value
+        assert redactions[0].redacted_value == "***@***", "Email should be fully redacted for security"
     
     def test_pii_no_false_positives(self):
         """Verify no PII false positives on normal data"""

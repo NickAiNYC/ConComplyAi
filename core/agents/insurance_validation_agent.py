@@ -31,8 +31,7 @@ def validate_insurance_requirements(state: DocumentExtractionState) -> dict:
         # 1. CHECK ADDITIONAL INSURED
         has_additional_insured = _check_field_value(
             fields_dict.get("additional_insured"),
-            expected_values=["YES", "True", "X"],
-            error_msg="Additional Insured endorsement missing or not checked"
+            expected_values=["YES", "True", "X"]
         )
         if not has_additional_insured:
             validation_errors.append("CRITICAL: Additional Insured endorsement not found")
@@ -41,8 +40,7 @@ def validate_insurance_requirements(state: DocumentExtractionState) -> dict:
         # 2. CHECK WAIVER OF SUBROGATION
         has_waiver = _check_field_value(
             fields_dict.get("waiver_of_subrogation"),
-            expected_values=["YES", "True", "X"],
-            error_msg="Waiver of Subrogation not found"
+            expected_values=["YES", "True", "X"]
         )
         if not has_waiver:
             validation_errors.append("CRITICAL: Waiver of Subrogation not found")
@@ -51,8 +49,7 @@ def validate_insurance_requirements(state: DocumentExtractionState) -> dict:
         # 3. CHECK PER PROJECT AGGREGATE
         has_per_project = _check_field_value(
             fields_dict.get("per_project_aggregate"),
-            expected_values=["YES", "True", "X"],
-            error_msg="Per Project Aggregate not specified"
+            expected_values=["YES", "True", "X"]
         )
         if not has_per_project:
             validation_errors.append("WARNING: Per Project Aggregate not specified (recommended for large projects)")
@@ -142,7 +139,7 @@ def validate_insurance_requirements(state: DocumentExtractionState) -> dict:
         }
 
 
-def _check_field_value(field: ExtractedField, expected_values: List[str], error_msg: str) -> bool:
+def _check_field_value(field: ExtractedField, expected_values: List[str]) -> bool:
     """
     Check if extracted field matches expected values
     Returns True if field exists and matches
