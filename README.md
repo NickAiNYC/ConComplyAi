@@ -1,14 +1,34 @@
 # ConComplyAi 🏗️
 ### The NYC Construction Compliance Command Center
 
-**ConComplyAi** is the Operating System for NYC construction compliance. It automates the full lifecycle of risk—from discovering high-value permits to fixing insurance gaps and proving due diligence for lenders and insurers.
+**ConComplyAi** is the Operating System for NYC construction compliance. It automates the full lifecycle of risk—from discovering high‑value permits to fixing insurance gaps and proving due diligence for lenders and insurers.
 
-ConComplyAi runs a native agentic "Triple Handshake" for 2026:
+ConComplyAi runs a native agentic “Triple Handshake” for 2026:
 
 1. **Scout** finds the work (NYC DOB Open Data and public feeds).
-2. **Guard** audits the risk (LL149 One-Job Rule, LL152 gas piping cycles).
+2. **Guard** audits the risk (LL149 One‑Job Rule, LL152 gas piping cycles).
 3. **Fixer** resolves the gaps (autonomous broker outreach with exact RCNY citations).
-4. **DecisionProof** seals the loop (SHA-256 audit trail for every decision).
+4. **DecisionProof** seals the loop (SHA‑256 audit trail for every decision).
+
+All at a unit economic cost of **sub‑penny per document**, enforced in code and exposed via unit‑economics benchmarks.
+
+---
+
+### 🚀 The 2026 Advantage
+
+- **LL149 Enforcement:** Real‑time checking of the 2026 “One‑Job Rule” for Construction Superintendents.
+- **LL152 Cycle Automation:** Automatic gas‑piping remediation for buildings in Community Districts 4, 6, 8, 9, and 16.
+- **Self‑Healing Agents:** Scout, Guard, Fixer, and Watchman collaborate to detect, validate, and remediate compliance gaps without manual tickets.
+- **DecisionProof Handshake:** Cryptographic proof of every audit decision, ready for carriers, lenders, and owners.
+
+### What’s inside
+
+- **Discovery (Scout):** Real‑time monitoring of NYC data to find contestable opportunities.
+- **Verification (Guard):** Deep audits of COIs and superintendent credentials against 2026 mandates.
+- **Resolution (Fixer):** Autonomous broker workflows that close compliance gaps end‑to‑end.
+- **Proof (DecisionProof):** A tamper‑evident ledger of every decision, hashed and timestamped.
+- **Veteran View (Dashboard):** One screen that shows opportunity, autonomy, and audit chains.
+
 
 All at a unit economic cost of **sub-penny per document**, enforced in code and exposed via unit-economics benchmarks.
 
