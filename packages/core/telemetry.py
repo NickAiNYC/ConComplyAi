@@ -107,6 +107,14 @@ def track_agent_cost(
             result["timestamp"] = start_time.isoformat()
             result["duration_ms"] = int((end_time - start_time).total_seconds() * 1000)
             
+            # Update ComplianceResult if present (for Guard agent)
+            if "result" in result and hasattr(result["result"], "processing_cost"):
+                # Create new instance with updated cost (since it's frozen)
+                old_result = result["result"]
+                result["result"] = type(old_result)(
+                    **{**old_result.dict(), "processing_cost": cost_usd}
+                )
+            
             # Append to CSV
             _append_to_csv(
                 csv_path=csv_path,
