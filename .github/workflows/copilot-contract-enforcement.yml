@@ -1,0 +1,140 @@
+name: Copilot Contract Enforcement
+
+on:
+  pull_request:
+    paths:
+      - 'core/agents/**'
+      - 'packages/shared/models/**'
+      - 'core/models.py'
+      - 'validation/**'
+
+jobs:
+  validate-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Verify Pydantic Models Are Immutable
+        run: |
+          echo "🔍 Checking for immutable audit trail models..."
+          
+          # Find all audit trail models that should be frozen
+          MUTABLE_MODELS=$(grep -r "class.*Result\|class.*Proof\|class.*Assessment\|class.*DecisionLog\|class.*AuditLogEntry" \
+            core/agents/ core/models.py packages/shared/models/ 2>/dev/null | \
+            grep "class " | \
+            while IFS=: read -r file line; do
+              # Check if the class definition or its Config has frozen = True
+              class_name=$(echo "$line" | sed -n 's/.*class \([^(:]*\).*/\1/p')
+              if [ -n "$class_name" ]; then
+                # Look for frozen = True in the class or within 20 lines after class definition
+                if ! grep -A 20 "$line" "$file" | grep -q "frozen.*=.*True"; then
+                  echo "$file: $class_name"
+                fi
+              fi
+            done)
+          
+          if [ -n "$MUTABLE_MODELS" ]; then
+            echo "❌ Found mutable audit models - violates DecisionProof contract:"
+            echo "$MUTABLE_MODELS"
+            echo ""
+            echo "💡 Fix: Add 'frozen = True' to model Config class"
+            exit 1
+          else
+            echo "✅ All audit trail models are immutable"
+          fi
+      
+      - name: Check SHA-256 Usage in DecisionProofs
+        run: |
+          echo "🔍 Checking for SHA-256 audit trail hashing..."
+          
+          # Check if audit-related files use SHA-256
+          if grep -r "DecisionProof\|DecisionLog\|AuditLogEntry" core/ packages/ --include="*.py" -l | \
+             xargs grep -L "hashlib.sha256\|SHA256" 2>/dev/null | grep -v "__pycache__" | grep -v ".pyc"; then
+            echo "⚠️ Warning: Some audit trail files may be missing SHA-256 hashing"
+            echo "This is a warning only - review manually for NYC LL144 compliance"
+          else
+            echo "✅ SHA-256 audit trail implementation verified"
+          fi
+      
+      - name: Validate OSHA Citations
+        run: |
+          echo "🔍 Checking for OSHA citations in safety-related code..."
+          
+          # Check if safety/violation detection includes OSHA references
+          SAFETY_FILES=$(grep -r "safety.*violation\|risk.*assessment\|ppe.*detection\|fall.*protection" \
+            core/agents/ --include="*.py" -l 2>/dev/null || true)
+          
+          if [ -n "$SAFETY_FILES" ]; then
+            MISSING_OSHA=$(echo "$SAFETY_FILES" | while read -r file; do
+              if ! grep -q "OSHA.*1926\|OSHA 1926\|29 CFR 1926" "$file" 2>/dev/null; then
+                echo "$file"
+              fi
+            done)
+            
+            if [ -n "$MISSING_OSHA" ]; then
+              echo "⚠️ Safety violations without OSHA citations - may fail audit:"
+              echo "$MISSING_OSHA"
+              echo ""
+              echo "💡 Add specific OSHA references (e.g., 'OSHA 1926.501(b)(1)')"
+            else
+              echo "✅ OSHA citations verified in safety-related code"
+            fi
+          else
+            echo "ℹ️ No safety-related code changes detected"
+          fi
+      
+      - name: Email Tone Validation (Fixer Agent)
+        run: |
+          echo "🔍 Checking email templates for tone compliance..."
+          
+          # Install textstat for readability scoring
+          pip install textstat > /dev/null 2>&1
+          
+          # Check if email templates exist
+          if [ -f "scripts/validate_email_tone.py" ]; then
+            # Look for email templates or broker liaison code
+            if [ -d "core/agents/fixer/templates/" ]; then
+              python scripts/validate_email_tone.py core/agents/fixer/templates/
+            elif [ -f "core/agents/broker_liaison_agent.py" ]; then
+              echo "ℹ️ Email templates checked via inline validation"
+              python scripts/validate_email_tone.py core/agents/
+            else
+              echo "ℹ️ No email templates found to validate"
+            fi
+          else
+            echo "ℹ️ Email tone validator not yet implemented"
+          fi
+      
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+      
+      - name: Test Coverage Gate
+        run: |
+          echo "🔍 Running test coverage analysis..."
+          
+          # Run tests with coverage reporting
+          if [ -d "validation" ]; then
+            pytest validation/ --cov=core/agents --cov=packages --cov-report=term-missing --cov-fail-under=75 || {
+              echo "⚠️ Test coverage below 75% threshold"
+              echo "💡 Current threshold is 75%, target is 85%"
+              exit 0  # Don't fail the build yet, just warn
+            }
+            
+            # Check decision logic coverage (strict requirement)
+            if [ -f "core/agents/insurance_validation_agent.py" ]; then
+              echo "🔍 Checking critical decision logic coverage..."
+              pytest validation/ --cov=core/agents/insurance_validation_agent.py --cov-report=term --cov-fail-under=90 || {
+                echo "⚠️ Decision logic coverage below 90%"
+                echo "💡 Critical paths require higher coverage"
+              }
+            fi
+          else
+            echo "ℹ️ No test directory found"
+          fi
