@@ -1,4 +1,6 @@
 # ConComplyAi 🏗️
+[![Cost per Doc: $0.0007](https://img.shields.io/badge/Cost%20per%20Doc-%240.0007-brightgreen)](#)
+
 ### The NYC Construction Compliance Command Center
 
 **ConComplyAi** is the Operating System for NYC construction compliance. It automates the full lifecycle of risk—from discovering high‑value permits to fixing insurance gaps and proving due diligence for lenders and insurers.
@@ -16,7 +18,7 @@ All at a unit economic cost of **sub‑penny per document**, enforced in code an
 
 ### 🚀 The 2026 Advantage
 
-- **LL149 Enforcement:** Real‑time checking of the 2026 "One‑Job Rule" for Construction Superintendents.
+- **LL149 Enforcement:** Real‑time checking of the 2026 "One‑Job Rule" for Construction Superintendents. Includes deterministic logic for RCNY §101-08 contiguous-lot exceptions, so legitimate multi-site superintendent coverage is not falsely flagged.
 - **LL152 Cycle Automation:** Automatic gas‑piping remediation for buildings in Community Districts 4, 6, 8, 9, and 16.
 - **Self‑Healing Agents:** Scout, Guard, Fixer, and Watchman collaborate to detect, validate, and remediate compliance gaps without manual tickets.
 - **DecisionProof Handshake:** Cryptographic proof of every audit decision, ready for carriers, lenders, and owners.
@@ -31,9 +33,9 @@ All at a unit economic cost of **sub‑penny per document**, enforced in code an
 
 ### Who this is for
 
-- **Mid‑sized NYC GCs** with 10–100 active projects needing real‑time LL149/LL152 compliance.
-- **Insurance brokers** handling COIs for construction portfolios across multiple job sites.
-- **Owners/lenders** who need an auditable, explainable compliance trail with SHA‑256 proof chains.
+- Mid-sized NYC general contractors with 10–100 active projects.
+- Insurance brokers handling Certificates of Insurance for construction portfolios.
+- Owners and lenders who need an auditable, explainable compliance trail for LL149/LL152.
 
 ---
 
@@ -78,6 +80,20 @@ This repository consolidates four prior experimental projects into a single prod
 | Synthetic data lab | `packages/test_utils/sim_data`| Generates 100k+ synthetic permit scenarios.       |
 | Agent framework    | `packages/agents/base`        | Shared memory, costs, and hashes for all agents.  |
 | Dashboard          | `packages/ui`                 | Veteran View: single pane of glass for outputs.   |
+
+---
+
+### Sample DecisionProof Receipt
+
+```json
+{
+  "decision_id": "DP-9921",
+  "timestamp": "2026-02-06T01:48:27Z",
+  "agent": "FixerV2",
+  "audit_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4c9b93f3f98b1a5e",
+  "status": "VERIFIED_LENDER_READY"
+}
+```
 
 ---
 
@@ -308,7 +324,7 @@ pytest validation/test_document_processing.py -v
 ## 📂 Project Structure
 
 ```
-construction-compliance-ai/
+ConComplyAi/
 ├── core/
 │   ├── supervisor.py                    # Original LangGraph orchestration
 │   ├── multi_agent_supervisor.py        # ⭐ NEW: Multi-agent parallel execution

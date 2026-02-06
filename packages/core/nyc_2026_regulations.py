@@ -88,6 +88,14 @@ def is_ll149_superintendent_conflict(
     """
     Check if Construction Superintendent violates Local Law 149 (One-Job Rule)
     
+    NYC Local Law 149 (2024, effective 2026) restricts Construction Superintendents
+    to ONE active Primary designation to ensure adequate on-site supervision.
+    
+    CONTIGUOUS-LOT EXCEPTION (RCNY §101-08):
+    Legitimate multi-site superintendent coverage for contiguous lots is not flagged
+    as a violation, per NYC Rules. This implementation currently detects raw >1 job
+    conflicts; external systems should apply contiguous-lot logic before escalation.
+    
     This is a centralized helper used by Guard, Scout, and integration tests.
     
     Args:
@@ -154,6 +162,7 @@ LL152_2026_DUE_CYCLE_DISTRICTS = [4, 6, 8, 9, 16]
 
 # Fine amounts
 LL152_BASE_FINE = 10000.0  # $10,000 base fine
+LL152_PENALTY = LL152_BASE_FINE  # Alias for consistency
 LL152_DAILY_PENALTY = 250.0  # $250 per day after deadline
 
 # Estimated costs
