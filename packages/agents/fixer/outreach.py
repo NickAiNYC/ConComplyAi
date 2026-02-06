@@ -4,12 +4,14 @@ Implements the final link in Scout → Guard → Fixer Triple Handshake
 
 MISSION:
 When Guard detects compliance gaps, Fixer autonomously drafts remediation
-emails to insurance brokers with high-EQ 'Construction Professional' tone.
+emails to insurance brokers with 'Senior NYC Subcontractor' tone.
 
 BINDING CONSTRAINTS:
 - MUST cite specific NYC code (e.g., RCNY 101-08) or Agency spec (SCA/DDC)
+- MUST include NYC DOB Job Number from Scout
 - MUST include Correction Link for broker to upload new document
 - MUST generate HandshakeV2 pointing back to Guard's DecisionProof
+- MUST produce AuditProof object for Veteran Dashboard
 - Cost target: Total pipeline (Scout + Guard + Fixer) < $0.005/doc
 """
 
@@ -73,6 +75,20 @@ class COIMetadata(BaseModel):
     upload_date: Optional[datetime] = Field(default=None)
 
 
+class BrokerMetadata(BaseModel):
+    """
+    Insurance broker contact information and metadata
+    """
+    broker_name: str = Field(description="Insurance broker/agency name")
+    contact_name: Optional[str] = Field(default=None, description="Broker contact person")
+    email: Optional[str] = Field(default=None, description="Broker email address")
+    phone: Optional[str] = Field(default=None, description="Broker phone number")
+    agency_code: Optional[str] = Field(default=None, description="Insurance agency code")
+    
+    class Config:
+        frozen = True
+
+
 class EmailDraft(BaseModel):
     """
     Drafted remediation email for broker outreach
@@ -125,10 +141,12 @@ class OutreachAgent:
     with Scout and Guard agents in the multi-agent pipeline.
     
     Features:
-    - High-EQ email drafting with 'Construction Professional' tone
+    - Email drafting with 'Senior NYC Subcontractor' tone (direct, professional)
     - Specific NYC code citations (RCNY 101-08, SCA/DDC specs)
+    - Automatic inclusion of NYC DOB Job Number from Scout
     - Correction link generation
     - HandshakeV2 creation for audit chain
+    - AuditProof generation for Veteran Dashboard
     - Cost tracking via telemetry decorator
     """
     
@@ -140,6 +158,268 @@ class OutreachAgent:
             base_upload_url: Base URL for correction document uploads
         """
         self.base_upload_url = base_upload_url
+    
+    def generate_remediation_draft(
+        self,
+        deficiency_report: DeficiencyReport,
+        broker_metadata: BrokerMetadata,
+        parent_handshake: Optional[AgentHandshakeV2] = None
+    ) -> Dict[str, Any]:
+        """
+        Generate remediation email draft for insurance broker
+        
+        This is the NEW core Fixer functionality per updated requirements:
+        1. Analyzes deficiencies from Guard
+        2. Drafts email in 'Senior NYC Subcontractor' tone
+        3. Cites specific NYC regulations
+        4. Includes NYC DOB Job Number from Scout
+        5. Includes correction link
+        6. Creates HandshakeV2 for audit chain
+        7. Produces AuditProof for Veteran Dashboard
+        
+        Args:
+            deficiency_report: Structured deficiency data from Guard
+            broker_metadata: Insurance broker contact information
+            parent_handshake: Guard's handshake (for audit chain)
+        
+        Returns:
+            Dict containing:
+            - email_draft: EmailDraft object
+            - handshake: AgentHandshakeV2 for next agent
+            - fixer_output: FixerOutput conforming to AgentOutputProtocol
+            - decision_proof_obj: DecisionProof object (AuditProof for Dashboard)
+            - cost_usd: Processing cost
+            - input_tokens: Token usage
+            - output_tokens: Token usage
+        """
+        # Generate correction link with document ID
+        correction_link = f"{self.base_upload_url}?doc_id={deficiency_report.document_id}&project_id={deficiency_report.project_id}"
+        
+        # Determine priority based on severity
+        priority_map = {
+            "CRITICAL": "URGENT",
+            "HIGH": "HIGH",
+            "MEDIUM": "NORMAL"
+        }
+        priority = priority_map.get(deficiency_report.severity, "HIGH")
+        
+        # Draft email components with Senior NYC Subcontractor tone
+        subject = self._draft_subject_subcontractor_tone(deficiency_report, priority)
+        body = self._draft_body_subcontractor_tone(
+            deficiency_report=deficiency_report,
+            broker_metadata=broker_metadata,
+            correction_link=correction_link
+        )
+        
+        # Extract cited regulations
+        cited_regulations = self._extract_regulations(deficiency_report)
+        
+        # Generate unique draft ID
+        draft_id = f"FIXER-{deficiency_report.document_id}-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+        
+        # Create email draft
+        email_draft = EmailDraft(
+            subject=subject,
+            body=body,
+            tone="Senior NYC Subcontractor",
+            priority=priority,
+            cited_regulations=cited_regulations,
+            correction_link=correction_link,
+            draft_id=draft_id
+        )
+        
+        # Create decision proof (AuditProof for Veteran Dashboard)
+        logic_citations = self._create_logic_citations(deficiency_report)
+        
+        reasoning = (
+            f"Fixer analyzed {len(deficiency_report.deficiencies)} compliance deficiencies "
+            f"from Guard validation of document {deficiency_report.document_id}. "
+            f"Drafted remediation email to {broker_metadata.broker_name} "
+            f"citing {len(cited_regulations)} specific NYC regulations. "
+            f"Email includes NYC DOB Job Number {deficiency_report.permit_number or 'N/A'} and correction link."
+        )
+        
+        decision_proof = create_decision_proof(
+            agent_name="Fixer",
+            decision="REMEDIATION_DRAFTED",
+            input_data={
+                "document_id": deficiency_report.document_id,
+                "project_id": deficiency_report.project_id,
+                "permit_number": deficiency_report.permit_number,
+                "deficiency_count": len(deficiency_report.deficiencies),
+                "severity": deficiency_report.severity,
+                "broker": broker_metadata.broker_name,
+            },
+            logic_citations=logic_citations,
+            reasoning=reasoning,
+            confidence=0.90,
+            risk_level="MEDIUM",
+            estimated_financial_impact=None,
+            cost_usd=0.0  # Will be filled by decorator if used
+        )
+        
+        # Create Fixer handshake for audit chain
+        handshake = self._create_fixer_handshake(
+            deficiency_report=deficiency_report,
+            decision_proof_hash=decision_proof.proof_hash,
+            parent_handshake=parent_handshake
+        )
+        
+        # Token usage estimation (email drafting uses minimal LLM calls)
+        input_tokens = 200   # Reading deficiency report
+        output_tokens = 400  # Drafting email
+        
+        # Calculate cost
+        cost_usd = 0.0001  # Minimal cost for template-based generation
+        
+        # Create FixerOutput conforming to AgentOutputProtocol
+        fixer_output = FixerOutput(
+            handshake=handshake,
+            decision_proof_hash=decision_proof.proof_hash,
+            processing_cost_usd=cost_usd,
+            confidence_score=0.90,
+            agent_name=AgentRole.FIXER,
+            email_draft=email_draft,
+            deficiency_report=deficiency_report
+        )
+        
+        return {
+            "email_draft": email_draft,
+            "handshake": handshake,
+            "fixer_output": fixer_output,
+            "decision_proof_obj": decision_proof,  # AuditProof for Veteran Dashboard
+            "audit_proof": decision_proof,  # Alias for clarity
+            "cost_usd": cost_usd,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "project_id": deficiency_report.project_id,
+        }
+    
+    
+    def _draft_subject_subcontractor_tone(
+        self,
+        deficiency_report: DeficiencyReport,
+        priority: str
+    ) -> str:
+        """
+        Draft subject line with Senior NYC Subcontractor tone
+        Direct, professional, includes DOB Job Number
+        
+        Args:
+            deficiency_report: Deficiency details
+            priority: Email priority (URGENT/HIGH/NORMAL)
+        
+        Returns:
+            Subject line string
+        """
+        prefix = ""
+        if priority == "URGENT":
+            prefix = "URGENT - "
+        
+        # Include DOB Job Number prominently
+        job_ref = ""
+        if deficiency_report.permit_number:
+            job_ref = f" - DOB Job #{deficiency_report.permit_number}"
+        
+        return (
+            f"{prefix}COI Update Required: {deficiency_report.contractor_name}"
+            f"{job_ref}"
+        )
+    
+    def _draft_body_subcontractor_tone(
+        self,
+        deficiency_report: DeficiencyReport,
+        broker_metadata: BrokerMetadata,
+        correction_link: str
+    ) -> str:
+        """
+        Draft email body with Senior NYC Subcontractor tone
+        
+        Tone characteristics:
+        - Direct and no-nonsense
+        - Professional but not overly formal
+        - Construction industry language
+        - Non-robotic, human voice
+        - Action-oriented
+        
+        Args:
+            deficiency_report: Deficiency details
+            broker_metadata: Broker contact info
+            correction_link: Upload link for corrections
+        
+        Returns:
+            Email body as formatted string
+        """
+        # Greeting - direct and professional
+        contact_name = broker_metadata.contact_name or broker_metadata.broker_name
+        greeting = f"{contact_name},"
+        
+        # Opening - direct and specific
+        job_ref = f"DOB Job #{deficiency_report.permit_number}" if deficiency_report.permit_number else "this project"
+        opening = (
+            f"\nWe're reviewing the COI for {deficiency_report.contractor_name} on {job_ref} "
+            f"and need you to update a few items before we can process it.\n"
+        )
+        
+        # Deficiencies - specific and clear
+        deficiencies_header = "\n**Items to Fix:**\n"
+        deficiency_items = []
+        
+        for i, deficiency in enumerate(deficiency_report.deficiencies, 1):
+            # Find corresponding citation if available
+            citation_note = ""
+            if i <= len(deficiency_report.citations):
+                citation = deficiency_report.citations[i-1]
+                # Make citation more readable
+                citation_clean = citation.replace("_", " ").replace("NYC ", "")
+                citation_note = f" (per {citation_clean})"
+            
+            deficiency_items.append(f"{i}. {deficiency}{citation_note}")
+        
+        deficiencies_text = "\n".join(deficiency_items)
+        
+        # NYC DOB Job reference for context
+        job_context = ""
+        if deficiency_report.permit_number and deficiency_report.project_address:
+            job_context = f"\n**Project:** DOB Job #{deficiency_report.permit_number} - {deficiency_report.project_address}\n"
+        
+        # Action items - clear and direct
+        action_items = f"""
+**What We Need:**
+
+Upload the updated COI here: {correction_link}
+
+Reference this doc ID when you upload: {deficiency_report.document_id}
+
+We'll review it same day once it's in.
+"""
+        
+        # Timeline - direct
+        timeline = """
+**Timeline:** Need this within 48 hours to keep the project moving.
+"""
+        
+        # Closing - professional but warm
+        closing = f"""
+Thanks,
+
+Project Team
+{deficiency_report.project_id}
+"""
+        
+        # Assemble full email
+        body = (
+            f"{greeting}\n"
+            f"{opening}\n"
+            f"{deficiencies_header}\n"
+            f"{deficiencies_text}\n"
+            f"{job_context}\n"
+            f"{action_items}\n"
+            f"{timeline}\n"
+            f"{closing}"
+        )
+        
+        return body
     
     def draft_broker_email(
         self,
