@@ -88,13 +88,35 @@ class ConstructionSuperintendent(BaseModel):
 class LL149Violation(BaseModel):
     """
     Local Law 149 violation - Construction Superintendent on multiple active jobs
-    Trigger HIGH_RISK_MANDATE alert
+    
+    2026 REFINEMENT: Added explainability fields per requirements
+    - legal_basis: Short code + citation
+    - explanation: Human-readable description
+    - suggested_action: Concise remediation directive
+    
+    NOTE: This model is being deprecated in favor of packages.core.nyc_2026_regulations.LL149Finding
+    Kept for backward compatibility.
     """
     cs_name: str
     cs_license_number: str
     active_primary_permits: List[str] = Field(
         description="List of permit numbers where CS is designated as Primary"
     )
+    
+    # 2026 EXPLAINABILITY FIELDS
+    legal_basis: str = Field(
+        default="LL149 - Local Law 149 of 2026 (The One-Job Rule)",
+        description="Short code + citation string"
+    )
+    explanation: str = Field(
+        default="Construction Superintendent designated as Primary on multiple active permits, violating one-job rule.",
+        description="1-2 human sentences describing why this was flagged"
+    )
+    suggested_action: str = Field(
+        default="Reassign superintendent or close out prior permit to satisfy one-job rule.",
+        description="One concise directive for remediation"
+    )
+    
     violation_severity: Literal["HIGH_RISK_MANDATE", "MEDIUM", "LOW"] = Field(
         default="HIGH_RISK_MANDATE"
     )
@@ -104,7 +126,7 @@ class LL149Violation(BaseModel):
     )
     recommended_action: str = Field(
         default="Designate backup CS as primary on one project, or hire additional CS",
-        description="Remediation guidance"
+        description="Remediation guidance (deprecated, use suggested_action)"
     )
     detected_at: datetime = Field(default_factory=datetime.utcnow)
     
@@ -116,6 +138,8 @@ class GPS2Certification(BaseModel):
     """
     Local Law 152 (Gas Piping System) GPS2 certification tracking
     Required for buildings in specific Community Districts by 2026
+    
+    2026 REFINEMENT: Added explainability fields
     """
     building_bin: str = Field(description="NYC Building Identification Number")
     community_district: int = Field(
@@ -132,6 +156,17 @@ class GPS2Certification(BaseModel):
     in_2026_due_cycle: bool = Field(
         description="Whether building is in 2026 due cycle (CD 4,6,8,9,16)"
     )
+    
+    # 2026 EXPLAINABILITY FIELDS
+    legal_basis: str = Field(
+        default="LL152 - Local Law 152 of 2016 (Gas Piping System Periodic Inspection)",
+        description="Short code + citation string"
+    )
+    explanation: Optional[str] = Field(
+        default=None,
+        description="Human-readable explanation of finding"
+    )
+    
     projected_fine: Optional[float] = Field(
         default=10000.0,
         description="Fine amount for non-compliance (NYC LL152: $10,000 base)"
@@ -145,6 +180,8 @@ class LL152Remediation(BaseModel):
     """
     Local Law 152 remediation template for Fixer agent
     Digital filing logic for missing GPS2 certifications
+    
+    2026 REFINEMENT: Added explainability fields per requirements
     """
     building_bin: str
     building_address: str
@@ -164,6 +201,20 @@ class LL152Remediation(BaseModel):
     projected_fine_if_missed: float = Field(
         default=10000.0,
         description="DOB fine for non-compliance"
+    )
+    
+    # 2026 EXPLAINABILITY FIELDS
+    legal_basis: str = Field(
+        default="LL152 - Local Law 152 of 2016 (Gas Piping System Periodic Inspection)",
+        description="Short code + citation string"
+    )
+    explanation: str = Field(
+        default="Building in 2026 LL152 due-cycle requires GPS2 gas piping inspection certification.",
+        description="Human-readable explanation"
+    )
+    suggested_action: str = Field(
+        default="Hire Licensed Master Plumber (LMP) to conduct GPS2 inspection and file certification with DOB.",
+        description="Concise remediation directive"
     )
     
     # Outreach template
