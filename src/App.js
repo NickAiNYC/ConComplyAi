@@ -2,14 +2,17 @@ import React, { useState } from 'react';
 import SuccessionShieldEnterprise from './components/SuccessionShieldEnterprise';
 import DocumentUploadStation from './components/DocumentUploadStation';
 import ContractorDocVerifier from './components/ContractorDocVerifier';
+import SentinelLiveFeed from './components/SentinelLiveFeed';
 
 /**
- * Main Application Component
+ * Main Application Component - Unified Compliance Command Center
  * 
  * ConComplyAi - AI-driven platform for verifying contractor documentation
+ * Integrated with Sentinel-Scope for real-time monitoring
  * 
  * Features:
- * - Site compliance dashboard (violation detection)
+ * - Site compliance dashboard (violation detection) - "Validator Station"
+ * - Sentinel Live Feed - Real-time monitoring
  * - Document upload and processing
  * - Document verification with comparison view
  */
@@ -27,14 +30,20 @@ function App() {
       {/* Navigation */}
       <nav style={styles.navigation}>
         <div style={styles.navBrand}>
-          🏗️ ConComplyAi
+          🏗️ ConComplyAi - Compliance Command Center
         </div>
         <div style={styles.navLinks}>
           <button 
             style={activeView === 'dashboard' ? styles.navButtonActive : styles.navButton}
             onClick={() => setActiveView('dashboard')}
           >
-            📊 Site Compliance
+            ✓ Validator Station
+          </button>
+          <button 
+            style={activeView === 'sentinel' ? styles.navButtonActive : styles.navButton}
+            onClick={() => setActiveView('sentinel')}
+          >
+            🔭 Sentinel Live Feed
           </button>
           <button 
             style={activeView === 'upload' ? styles.navButtonActive : styles.navButton}
@@ -57,6 +66,10 @@ function App() {
       <div style={styles.content}>
         {activeView === 'dashboard' && (
           <SuccessionShieldEnterprise />
+        )}
+
+        {activeView === 'sentinel' && (
+          <SentinelLiveFeed />
         )}
 
         {activeView === 'upload' && (
