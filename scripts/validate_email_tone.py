@@ -153,49 +153,60 @@ class EmailToneValidator:
             
             # Extract multi-line strings and docstrings that might be email templates
             # Look for strings that contain email-like content
-            if 'email' in content.lower() or 'subject:' in content.lower():
-                # Extract docstrings and large string literals
-                docstring_pattern = r'"""(.*?)"""'
-                docstrings = re.findall(docstring_pattern, content, re.DOTALL)
+            if 'email' in content.lower() or 'subject:' in content.lower() or 'dear' in content.lower():
+                # Extract docstrings (regular and f-strings)
+                docstring_patterns = [
+                    r'"""(.*?)"""',  # Regular docstrings
+                    r'f"""(.*?)"""',  # F-string docstrings
+                    r"'''(.*?)'''",   # Single quote docstrings
+                    r"f'''(.*?)'''",  # F-string single quote
+                ]
                 
-                for i, docstring in enumerate(docstrings):
-                    if any(marker in docstring.lower() for marker in 
-                          ['subject:', 'dear', 'hello', 'hey', 'thanks,', 'regards,']):
+                all_strings = []
+                for pattern in docstring_patterns:
+                    all_strings.extend(re.findall(pattern, content, re.DOTALL))
+                
+                for i, string_content in enumerate(all_strings):
+                    if any(marker in string_content.lower() for marker in 
+                          ['subject:', 'dear', 'hello', 'hey', 'thanks,', 'regards,', 'best regards']):
                         # This looks like an email template
-                        self.validate_readability(docstring, f"{filename} (docstring {i+1})")
-                        self.check_anti_patterns(docstring, f"{filename} (docstring {i+1})")
-                        self.check_sentence_length(docstring, f"{filename} (docstring {i+1})")
+                        self.validate_readability(string_content, f"{filename} (string {i+1})")
+                        self.check_anti_patterns(string_content, f"{filename} (string {i+1})")
+                        self.check_sentence_length(string_content, f"{filename} (string {i+1})")
                         
         except Exception as e:
             pass  # Skip files that can't be read
     
     def validate_all(self) -> bool:
         """Validate all templates in directory"""
-        if not self.template_dir.exists():
-            print(f"ℹ️  Directory {self.template_dir} does not exist")
-            
-            # If it's a file, check just that file
-            if self.template_dir.is_file():
-                if self.template_dir.suffix == '.py':
-                    self.validate_python_file(self.template_dir)
-                else:
-                    self.validate_template_file(self.template_dir)
-                return len(self.violations) == 0
-            
-            return True  # Not a failure if directory doesn't exist
+        template_path = Path(self.template_dir)
+        
+        # If it's a file, check just that file
+        if template_path.is_file():
+            if template_path.suffix == '.py':
+                self.validate_python_file(template_path)
+            else:
+                self.validate_template_file(template_path)
+            return len(self.violations) == 0
+        
+        # If directory doesn't exist, not a failure
+        if not template_path.exists():
+            print(f"ℹ️  Directory {template_path} does not exist")
+            return True
         
         # Check for .txt, .md, .email template files
-        template_files = list(self.template_dir.glob("*.txt"))
-        template_files.extend(self.template_dir.glob("*.email"))
-        template_files.extend(self.template_dir.glob("*.md"))
+        template_files = list(template_path.glob("*.txt"))
+        template_files.extend(template_path.glob("*.email"))
+        template_files.extend(template_path.glob("*.md"))
         
         # Also check Python files for embedded templates
-        py_files = list(self.template_dir.glob("*liaison*.py"))
-        py_files.extend(self.template_dir.glob("*outreach*.py"))
-        py_files.extend(self.template_dir.glob("*fixer*.py"))
+        py_files = list(template_path.glob("*liaison*.py"))
+        py_files.extend(template_path.glob("*outreach*.py"))
+        py_files.extend(template_path.glob("*fixer*.py"))
+        py_files.extend(template_path.glob("*broker*.py"))
         
         if not template_files and not py_files:
-            print(f"ℹ️  No email templates found in {self.template_dir}")
+            print(f"ℹ️  No email templates found in {template_path}")
             return True
         
         for template_file in template_files:
