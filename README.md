@@ -132,6 +132,30 @@ The system now **acts autonomously** to maintain compliance:
 
 ## 🚀 Quick Start
 
+### 🎬 2026 NYC Release Demo (⭐ NEW)
+
+Experience the complete 2026 regulatory compliance showcase:
+
+```bash
+# Clone and install
+git clone https://github.com/your-username/ConComplyAi.git
+cd ConComplyAi
+pip install -r requirements.txt
+
+# Run the 2026 NYC demo (LL149 + LL152 + Scout→Guard→Fixer)
+python demo_2026_nyc_loop.py --verbose
+```
+
+**What you'll see:**
+- 🚨 LL149 One-Job Rule violation detection (Construction Superintendent conflicts)
+- ⚙️ LL152 Gas piping cycle automation (2026 due-cycle districts)
+- 🔄 Complete Scout → Guard → Fixer autonomous remediation loop
+- 📊 Sub-penny cost telemetry ($0.0020 total system cost)
+- 🔒 SHA-256 cryptographic decision proof chain
+- 📧 Auto-drafted professional broker outreach email
+
+---
+
 ### Succession Shield Enterprise Dashboard (React)
 
 ```bash
