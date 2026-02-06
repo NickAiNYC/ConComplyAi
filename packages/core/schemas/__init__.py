@@ -35,6 +35,22 @@ class ExpirationStatus(str, Enum):
 # DECISION PROOF (XAI) - 2026 Standards
 # ============================================================================
 
+class AgentHandshake(BaseModel):
+    """
+    Agent-to-Agent transition tracking for governance audit
+    Documents how leads pass between agents in the multi-agent system
+    """
+    from_agent: str = Field(description="Source agent identifier")
+    to_agent: str = Field(description="Target agent identifier")
+    handshake_timestamp: datetime = Field(default_factory=datetime.now)
+    transition_reason: str = Field(description="Why this handoff occurred")
+    data_passed: Dict[str, Any] = Field(description="Data payload transferred")
+    validation_status: str = Field(description="handoff_validated|pending|failed")
+    
+    class Config:
+        frozen = True  # Immutable after creation
+
+
 class DecisionProof(BaseModel):
     """
     Explainable AI Decision Proof
@@ -59,6 +75,12 @@ class DecisionProof(BaseModel):
     reasoning_chain: List[str] = Field(
         default_factory=list,
         description="Step-by-step reasoning for XAI"
+    )
+    
+    # Agent Handshake log for governance audit (Task 3)
+    agent_handshake: Optional[AgentHandshake] = Field(
+        default=None,
+        description="Agent-to-agent transition tracking for multi-agent governance"
     )
     
     class Config:
@@ -241,3 +263,154 @@ class DocumentExtractionState(BaseModel):
     
     class Config:
         arbitrary_types_allowed = True
+
+
+# ============================================================================
+# SCOPESIGNAL & FEASIBILITY - 2027 Standards
+# ============================================================================
+
+class LeadStatus(str, Enum):
+    """Status of a ScopeSignal lead/opportunity"""
+    CONTESTABLE = "CONTESTABLE"  # High-confidence opportunity
+    MONITORING = "MONITORING"  # Under surveillance
+    QUALIFIED = "QUALIFIED"  # Passed feasibility
+    DISQUALIFIED = "DISQUALIFIED"  # Failed feasibility
+    CLOSED_WON = "CLOSED_WON"
+    CLOSED_LOST = "CLOSED_LOST"
+
+
+class AgencyRequirement(str, Enum):
+    """Insurance agency compliance requirements"""
+    SCA = "SCA"  # School Construction Authority
+    DDC = "DDC"  # Department of Design and Construction
+    HPD = "HPD"  # Housing Preservation and Development
+    DOT = "DOT"  # Department of Transportation
+
+
+class ScopeSignal(BaseModel):
+    """
+    Lead/Opportunity from ConComply-Scope Suite
+    Links vision detections to business opportunities
+    """
+    signal_id: str = Field(description="Unique signal identifier")
+    project_id: str = Field(description="Project being monitored")
+    project_name: str
+    project_address: str
+    
+    # Status tracking
+    status: LeadStatus = Field(default=LeadStatus.CONTESTABLE)
+    detected_at: datetime = Field(default_factory=datetime.now)
+    
+    # Compliance gaps detected
+    missing_endorsements: List[str] = Field(default_factory=list)
+    insurance_gaps: List[str] = Field(default_factory=list)
+    agency_requirements: List[AgencyRequirement] = Field(default_factory=list)
+    
+    # Vision correlation (Task 2)
+    sentinel_detection_id: Optional[str] = Field(
+        default=None,
+        description="Link to Sentinel-Scope vision detection"
+    )
+    has_active_monitoring: bool = Field(
+        default=False,
+        description="True if Sentinel is already watching this project"
+    )
+    
+    # Estimator support
+    site_status_memo: Optional[str] = Field(
+        default=None,
+        description="Auto-generated memo for estimator when CONTESTABLE + monitoring"
+    )
+    
+    # Broker contact for outreach
+    broker_contact: Optional[BrokerContact] = None
+    contractor_name: str
+    
+    # Feasibility link
+    feasibility_score: Optional[float] = Field(
+        default=None,
+        ge=0.0, le=100.0,
+        description="Likelihood of winning bid with current compliance"
+    )
+
+
+class FeasibilityScore(BaseModel):
+    """
+    Feasibility assessment with profitability drain prediction
+    Uses 'Skeptical' veteran logic for risk calculations
+    """
+    signal_id: str = Field(description="Associated ScopeSignal")
+    project_id: str
+    
+    # Core feasibility
+    overall_score: float = Field(ge=0.0, le=100.0)
+    confidence: float = Field(ge=0.0, le=1.0)
+    
+    # Insurance gap analysis
+    current_insurance_gaps: List[str] = Field(default_factory=list)
+    required_endorsements: List[str] = Field(default_factory=list)
+    
+    # Predictive Risk (Task 4) - Profitability Drain
+    projected_premium_increase: float = Field(
+        description="Estimated cost of additional insurance (USD)"
+    )
+    projected_profitability_drain: float = Field(
+        description="% profit margin lost to insurance gaps"
+    )
+    estimated_bid_adjustment: float = Field(
+        description="Additional bid amount needed to cover gaps (USD)"
+    )
+    
+    # Skeptical veteran logic factors
+    risk_factors: Dict[str, float] = Field(
+        default_factory=dict,
+        description="Breakdown of risk multipliers (e.g., 'agency_strictness': 1.3)"
+    )
+    
+    # Cost efficiency tracking
+    calculation_tokens: int = Field(default=0)
+    calculation_cost: float = Field(default=0.0)
+    
+    # Decision support
+    recommendation: str = Field(
+        description="bid_with_caution|bid_after_compliance|do_not_bid"
+    )
+    reasoning: List[str] = Field(
+        default_factory=list,
+        description="Step-by-step reasoning for recommendation"
+    )
+    
+    assessed_at: datetime = Field(default_factory=datetime.now)
+    assessed_by_agent: str = Field(default="FeasibilityAgent")
+
+
+class EndorsementRequest(BaseModel):
+    """
+    Insurance endorsement request drafted by BrokerLiaison agent
+    Sent to broker to fix compliance gaps
+    """
+    request_id: str
+    signal_id: str  # Link to ScopeSignal
+    project_name: str
+    contractor_name: str
+    
+    # Target recipient
+    broker_contact: BrokerContact
+    
+    # Request details
+    agency_requirement: AgencyRequirement
+    required_endorsements: List[str]
+    urgency_level: str = Field(description="critical|high|standard")
+    
+    # Draft content
+    subject_line: str
+    email_body: str
+    
+    # Status
+    drafted_at: datetime = Field(default_factory=datetime.now)
+    sent_at: Optional[datetime] = None
+    broker_responded_at: Optional[datetime] = None
+    status: str = Field(default="drafted", description="drafted|sent|responded|fulfilled")
+    
+    # Governance
+    decision_proof: Optional[DecisionProof] = None

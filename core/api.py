@@ -413,6 +413,201 @@ async def export_audit_logs():
     }
 
 
+# ============================================================================
+# VETERAN DASHBOARD ACTION CENTER - 2027 ENHANCEMENTS
+# ============================================================================
+
+# Initialize new agents
+from core.agents.broker_liaison_agent import BrokerLiaisonAgent
+from core.agents.feasibility_agent import FeasibilityAgent
+
+broker_liaison = BrokerLiaisonAgent()
+feasibility_agent = FeasibilityAgent()
+
+
+class DraftEndorsementRequest(BaseModel):
+    """Request to draft endorsement for a ScopeSignal"""
+    signal_id: str
+    project_id: str
+    project_name: str
+    project_address: str
+    contractor_name: str
+    missing_endorsements: List[str]
+    insurance_gaps: List[str]
+    agency_requirements: List[str]  # SCA, DDC, HPD, DOT
+    broker_name: str
+    broker_email: Optional[str] = None
+    broker_phone: Optional[str] = None
+
+
+class FeasibilityRequest(BaseModel):
+    """Request for feasibility assessment"""
+    signal_id: str
+    project_id: str
+    project_value: float
+    profit_margin: float = 0.15
+    insurance_gaps: List[str]
+    missing_endorsements: List[str]
+    agency_requirements: List[str]
+
+
+@app.post("/api/broker-liaison/draft-endorsement")
+async def draft_endorsement(request: DraftEndorsementRequest):
+    """
+    Task 1: The Outreach Bridge
+    Draft insurance endorsement request when 'Fix Compliance' is clicked
+    """
+    try:
+        from packages.core import (
+            ScopeSignal, BrokerContact, ExtractedField,
+            AgencyRequirement, LeadStatus
+        )
+        
+        # Build BrokerContact
+        broker_contact = BrokerContact(
+            broker_name=ExtractedField(
+                field_name="broker_name",
+                value=request.broker_name,
+                confidence=1.0
+            ),
+            broker_email=ExtractedField(
+                field_name="broker_email",
+                value=request.broker_email,
+                confidence=1.0
+            ) if request.broker_email else None,
+            broker_phone=ExtractedField(
+                field_name="broker_phone",
+                value=request.broker_phone,
+                confidence=1.0
+            ) if request.broker_phone else None
+        )
+        
+        # Build ScopeSignal
+        signal = ScopeSignal(
+            signal_id=request.signal_id,
+            project_id=request.project_id,
+            project_name=request.project_name,
+            project_address=request.project_address,
+            contractor_name=request.contractor_name,
+            status=LeadStatus.CONTESTABLE,
+            missing_endorsements=request.missing_endorsements,
+            insurance_gaps=request.insurance_gaps,
+            agency_requirements=[AgencyRequirement(a) for a in request.agency_requirements],
+            broker_contact=broker_contact
+        )
+        
+        # Draft endorsement request
+        endorsement = broker_liaison.draft_endorsement_request(signal)
+        
+        return {
+            'status': 'success',
+            'request_id': endorsement.request_id,
+            'subject': endorsement.subject_line,
+            'body': endorsement.email_body,
+            'urgency': endorsement.urgency_level,
+            'required_endorsements': endorsement.required_endorsements,
+            'decision_proof': {
+                'agent_id': endorsement.decision_proof.agent_id,
+                'confidence': endorsement.decision_proof.confidence_score,
+                'reasoning': endorsement.decision_proof.reasoning_chain,
+                'agent_handshake': {
+                    'from_agent': endorsement.decision_proof.agent_handshake.from_agent,
+                    'to_agent': endorsement.decision_proof.agent_handshake.to_agent,
+                    'validation_status': endorsement.decision_proof.agent_handshake.validation_status
+                } if endorsement.decision_proof.agent_handshake else None
+            } if endorsement.decision_proof else None,
+            'statistics': broker_liaison.get_statistics()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/vision-lead-correlation/{project_id}")
+async def get_vision_lead_correlation(project_id: str):
+    """
+    Task 2: Vision-Lead Correlation
+    Link Sentinel-Scope detections to ScopeSignal opportunities
+    """
+    try:
+        # Get recent sentinel events
+        events = sentinel_service.get_live_feed(limit=100)
+        
+        # Correlate to project
+        correlations = sentinel_service.correlate_vision_to_leads(
+            project_id=project_id,
+            sentinel_events=events
+        )
+        
+        return {
+            'status': 'success',
+            'project_id': project_id,
+            'correlations': correlations
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/predictive-risk/profitability-drain")
+async def calculate_profitability_drain(request: FeasibilityRequest):
+    """
+    Task 4: Predictive Risk - Profitability Drain Calculation
+    Calculate projected profitability drain from insurance gaps
+    """
+    try:
+        from packages.core import ScopeSignal, AgencyRequirement, LeadStatus
+        
+        # Build minimal ScopeSignal for feasibility
+        signal = ScopeSignal(
+            signal_id=request.signal_id,
+            project_id=request.project_id,
+            project_name="Assessment Project",
+            project_address="N/A",
+            contractor_name="N/A",
+            status=LeadStatus.CONTESTABLE,
+            missing_endorsements=request.missing_endorsements,
+            insurance_gaps=request.insurance_gaps,
+            agency_requirements=[AgencyRequirement(a) for a in request.agency_requirements]
+        )
+        
+        # Assess feasibility with profitability drain
+        assessment = feasibility_agent.assess_feasibility(
+            signal=signal,
+            estimated_project_value=request.project_value,
+            estimated_profit_margin=request.profit_margin
+        )
+        
+        return {
+            'status': 'success',
+            'signal_id': request.signal_id,
+            'feasibility_score': assessment.overall_score,
+            'confidence': assessment.confidence,
+            'projected_premium_increase': assessment.projected_premium_increase,
+            'profitability_drain_percent': assessment.projected_profitability_drain,
+            'estimated_bid_adjustment': assessment.estimated_bid_adjustment,
+            'recommendation': assessment.recommendation,
+            'reasoning': assessment.reasoning,
+            'risk_factors': assessment.risk_factors,
+            'cost_efficiency': {
+                'tokens_used': assessment.calculation_tokens,
+                'cost_usd': assessment.calculation_cost,
+                'meets_target': assessment.calculation_cost <= 0.007
+            },
+            'statistics': feasibility_agent.get_statistics()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/agent-statistics")
+async def get_agent_statistics():
+    """Get statistics for all Action Center agents"""
+    return {
+        'broker_liaison': broker_liaison.get_statistics(),
+        'feasibility_agent': feasibility_agent.get_statistics(),
+        'outreach_agent': outreach_agent.get_statistics()
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -18,6 +18,14 @@ from .schemas import (
     
     # Decision Proof (XAI)
     DecisionProof,
+    AgentHandshake,
+    
+    # ScopeSignal & Feasibility (2027)
+    ScopeSignal,
+    FeasibilityScore,
+    EndorsementRequest,
+    LeadStatus,
+    AgencyRequirement,
     
     # Enums
     DocumentType,
@@ -46,6 +54,13 @@ __all__ = [
     'BrokerContact',
     # Decision Proof
     'DecisionProof',
+    'AgentHandshake',
+    # ScopeSignal & Feasibility
+    'ScopeSignal',
+    'FeasibilityScore',
+    'EndorsementRequest',
+    'LeadStatus',
+    'AgencyRequirement',
     # Enums
     'DocumentType',
     'ExpirationStatus',
