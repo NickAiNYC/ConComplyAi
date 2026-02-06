@@ -366,6 +366,7 @@ def demonstrate_scout_guard_fixer_loop(verbose: bool = False):
         "scout_result": scout_result,
         "guard_result": guard_result,
         "fixer_triggered": fixer_triggered,
+        "fixer_cost": fixer_cost,
         "email_draft": email_draft,
         "total_cost_usd": total_cost,
         "duration_seconds": duration_seconds,

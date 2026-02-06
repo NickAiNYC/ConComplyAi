@@ -39,7 +39,7 @@ python demo_2026_nyc_loop.py --verbose
 - 🚨 LL149 violation detection with legal citations
 - ⚙️ LL152 cycle monitoring for due-cycle districts
 - 🔄 Complete Scout → Guard → Fixer autonomous remediation
-- 📊 Sub-penny cost telemetry ($0.0020 total system cost)
+- 📊 Sub-penny cost telemetry ($0.0020125 total system cost)
 - 🔒 SHA-256 decision proof chain
 - 📧 Auto-drafted broker outreach email with regulatory citations
 
@@ -150,7 +150,7 @@ python demo_2026_nyc_loop.py --verbose
 - 🚨 LL149 One-Job Rule violation detection (Construction Superintendent conflicts)
 - ⚙️ LL152 Gas piping cycle automation (2026 due-cycle districts)
 - 🔄 Complete Scout → Guard → Fixer autonomous remediation loop
-- 📊 Sub-penny cost telemetry ($0.0020 total system cost)
+- 📊 Sub-penny cost telemetry ($0.0020125 total system cost)
 - 🔒 SHA-256 cryptographic decision proof chain
 - 📧 Auto-drafted professional broker outreach email
 
