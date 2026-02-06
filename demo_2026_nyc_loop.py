@@ -14,6 +14,7 @@ EXECUTION:
     python demo_2026_nyc_loop.py --verbose
 """
 import sys
+import json
 import argparse
 from pathlib import Path
 from datetime import datetime
@@ -25,7 +26,20 @@ from packages.agents.scout.finder import find_opportunities, create_scout_handsh
 from packages.agents.guard.core import validate_coi
 from packages.agents.fixer.outreach import draft_broker_email, DeficiencyReport, COIMetadata
 from packages.core.agent_protocol import AgentRole, AuditChain
-from packages.core.telemetry import track_agent_cost
+from packages.core.telemetry import track_agent_cost, CostEfficiencyMonitor
+from packages.core.nyc_2026_regulations import (
+    is_ll149_superintendent_conflict,
+    needs_ll152_gps2_remediation
+)
+
+# Fixtures directory
+FIXTURES_DIR = Path(__file__).parent / "tests" / "fixtures" / "nyc_2026_ll149_ll152"
+
+
+def load_fixture(filename: str):
+    """Load JSON fixture file"""
+    with open(FIXTURES_DIR / filename) as f:
+        return json.load(f)
 
 
 def print_ascii_header():
@@ -70,6 +84,7 @@ def demonstrate_ll149_conflict_detection(verbose: bool = False):
     """
     Demonstrate LL149 One-Job Rule Engine
     Real-time conflict detection for Construction Superintendents
+    Uses fixture: ll149_superintendent_conflict.json
     """
     print_section_header("LL149 ONE-JOB RULE ENGINE", "🚨")
     
@@ -79,70 +94,97 @@ def demonstrate_ll149_conflict_detection(verbose: bool = False):
     print("ConComplyAi continuously monitors DOB permit database for violations...")
     print()
     
-    # Simulate LL149 check results
+    # Load fixture
+    fixture = load_fixture("ll149_superintendent_conflict.json")
+    
+    # Extract test data
+    cs_license = fixture["superintendent"]["cs_license_number"]
+    cs_name = fixture["superintendent"]["cs_name"]
+    active_permits = fixture["active_permits"]
+    
+    # Run LL149 check using actual implementation
     print("🔍 Scanning active permits for Superintendent conflicts...")
     print()
     
-    # Mock data showing LL149 violation
-    superintendent_name = "John Smith"
-    active_permits = [
-        {"permit": "121234567", "project": "Hudson Yards Tower B", "borough": "Manhattan"},
-        {"permit": "121234890", "project": "Brooklyn Navy Yard Phase 3", "borough": "Brooklyn"},
-    ]
+    finding = is_ll149_superintendent_conflict(
+        cs_license_number=cs_license,
+        active_permits=active_permits,
+        cs_name=cs_name
+    )
     
-    print(f"⚠️  RED FLAG: LL149 VIOLATION DETECTED")
-    print()
-    print(f"   Superintendent: {superintendent_name}")
-    print(f"   Active Permits: {len(active_permits)} (MAXIMUM ALLOWED: 1)")
-    print()
-    print("   Conflicting Projects:")
-    for i, permit in enumerate(active_permits, 1):
-        print(f"      {i}. Permit #{permit['permit']}")
-        print(f"         Project: {permit['project']}")
-        print(f"         Borough: {permit['borough']}")
+    if finding:
+        print(f"⚠️  RED FLAG: LL149 VIOLATION DETECTED")
         print()
-    
-    # Show legal basis
-    print("📋 LEGAL BASIS:")
-    print("   • NYC Local Law 149 (2024)")
-    print("   • NYC Rules §3310.11(a) - One Superintendent Per Job")
-    print("   • Effective Date: January 1, 2026")
-    print()
-    
-    print("💡 SUGGESTED ACTION:")
-    print("   1. Immediately notify project owners of both permits")
-    print("   2. Superintendent must resign from one project")
-    print("   3. Submit Form SSC-1 (Superintendent Succession) to DOB")
-    print("   4. New superintendent must file SSC-2 within 5 business days")
-    print()
-    
-    print("🔒 DECISION PROOF:")
-    decision_hash = "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456"
-    print(f"   SHA-256 Hash: {decision_hash}")
-    print(f"   Timestamp: {datetime.utcnow().isoformat()}Z")
-    print(f"   Agent: Guard (LL149 Compliance Module)")
-    print()
-    
-    return {
-        "violation_detected": True,
-        "violation_type": "LL149_ONE_JOB_RULE",
-        "superintendent": superintendent_name,
-        "active_permits": len(active_permits),
-        "decision_hash": decision_hash,
-        "cost_usd": 0.0004  # Sub-penny cost
-    }
+        print(f"   Superintendent: {finding.cs_name}")
+        print(f"   License: {finding.cs_license_number}")
+        print(f"   Active Permits: {len(finding.active_primary_permits)} (MAXIMUM ALLOWED: 1)")
+        print()
+        print("   Conflicting Permits:")
+        for i, permit_num in enumerate(finding.active_primary_permits, 1):
+            # Find permit details from active_permits
+            permit_detail = next((p for p in active_permits if p["permit_number"] == permit_num), None)
+            if permit_detail:
+                print(f"      {i}. Permit #{permit_num}")
+                print(f"         Address: {permit_detail.get('project_address', 'N/A')}")
+        print()
+        
+        # Show legal basis
+        print("📋 LEGAL BASIS:")
+        print(f"   {finding.legal_basis}")
+        print()
+        
+        print("📝 EXPLANATION:")
+        print(f"   {finding.explanation}")
+        print()
+        
+        print("💡 SUGGESTED ACTION:")
+        print(f"   {finding.suggested_action}")
+        print()
+        
+        print("🔒 DECISION PROOF:")
+        decision_hash = "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456"
+        print(f"   SHA-256 Hash: {decision_hash}")
+        print(f"   Timestamp: {finding.detected_at.isoformat()}Z")
+        print(f"   Agent: Guard (LL149 Compliance Module)")
+        print(f"   Severity: {finding.severity}")
+        print()
+        
+        return {
+            "violation_detected": True,
+            "violation_type": "LL149_ONE_JOB_RULE",
+            "superintendent": cs_name,
+            "active_permits": len(finding.active_primary_permits),
+            "decision_hash": decision_hash,
+            "legal_basis": finding.legal_basis,
+            "explanation": finding.explanation,
+            "suggested_action": finding.suggested_action,
+            "cost_usd": 0.0004  # Sub-penny cost
+        }
+    else:
+        print("✅ No LL149 violations detected")
+        return {
+            "violation_detected": False,
+            "cost_usd": 0.0004
+        }
 
 
 def demonstrate_ll152_cycle_automation(verbose: bool = False):
     """
     Demonstrate LL152 Gas Piping Cycle Automation
     Specialized remediation for 2026 due-cycle Districts (4, 6, 8, 9, 16)
+    Uses fixture: ll152_missing_gps2.json
     """
     print_section_header("LL152 CYCLE AUTOMATION", "⚙️")
     
     print("NYC Local Law 152 (2016): Gas piping inspection cycles vary by")
     print("Community District. 2026 is a due-cycle year for Districts 4, 6, 8, 9, 16.")
     print()
+    
+    # Load fixture
+    fixture = load_fixture("ll152_missing_gps2.json")
+    
+    # Extract test data
+    building = fixture["building"]
     
     # Target districts for 2026
     target_districts = [4, 6, 8, 9, 16]
@@ -152,50 +194,66 @@ def demonstrate_ll152_cycle_automation(verbose: bool = False):
     print("🔍 Scanning buildings in due-cycle districts...")
     print()
     
-    # Mock building requiring inspection
-    building = {
-        "address": "456 PROSPECT PARK WEST",
-        "borough": "Brooklyn",
-        "district": 6,
-        "last_inspection": "2021-03-15",
-        "status": "OVERDUE"
-    }
+    # Run LL152 check using actual implementation
+    finding = needs_ll152_gps2_remediation(
+        building_bin=building["building_bin"],
+        building_address=building["building_address"],
+        community_district=building["community_district"],
+        has_gps2_certification=building["has_gps2_certification"],
+        current_year=2026
+    )
     
-    print(f"⚠️  ALERT: LL152 INSPECTION OVERDUE")
-    print()
-    print(f"   Address: {building['address']}, {building['borough']}")
-    print(f"   Community District: {building['district']} (2026 DUE-CYCLE)")
-    print(f"   Last Inspection: {building['last_inspection']}")
-    print(f"   Status: {building['status']}")
-    print()
-    
-    print("📋 LEGAL BASIS:")
-    print("   • NYC Local Law 152 (2016)")
-    print("   • NYC Admin Code §28-318.3 - Gas Piping Systems")
-    print("   • 5-Year Inspection Cycle (Districts 4, 6, 8, 9, 16 due in 2026)")
-    print()
-    
-    print("💡 SUGGESTED ACTION:")
-    print("   1. Schedule Licensed Master Plumber (LMP) inspection")
-    print("   2. Submit GPS-1 form to DOB within 60 days of cycle start")
-    print("   3. File GPS-2 (inspection report) within 30 days of completion")
-    print("   4. Address any deficiencies within 45 days or vacate order issued")
-    print()
-    
-    print("🔒 DECISION PROOF:")
-    decision_hash = "b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef1234567"
-    print(f"   SHA-256 Hash: {decision_hash}")
-    print(f"   Timestamp: {datetime.utcnow().isoformat()}Z")
-    print(f"   Agent: Scout (LL152 Cycle Monitor)")
-    print()
-    
-    return {
-        "inspection_required": True,
-        "violation_type": "LL152_OVERDUE_INSPECTION",
-        "district": building["district"],
-        "decision_hash": decision_hash,
-        "cost_usd": 0.0003  # Sub-penny cost
-    }
+    if finding:
+        print(f"⚠️  ALERT: LL152 INSPECTION OVERDUE")
+        print()
+        print(f"   Address: {finding.building_address}")
+        print(f"   BIN: {finding.building_bin}")
+        print(f"   Community District: {finding.community_district} (2026 DUE-CYCLE)")
+        print(f"   GPS2 Status: {'On File' if finding.has_gps2_certification else 'MISSING'}")
+        print(f"   Deadline: {finding.deadline.strftime('%B %d, %Y')}")
+        print()
+        
+        print("📋 LEGAL BASIS:")
+        print(f"   {finding.legal_basis}")
+        print()
+        
+        print("📝 EXPLANATION:")
+        print(f"   {finding.explanation}")
+        print()
+        
+        print("💡 SUGGESTED ACTION:")
+        print(f"   {finding.suggested_action}")
+        print()
+        
+        print("💰 FINANCIAL IMPACT:")
+        print(f"   Projected Fine: ${finding.projected_fine:,.0f}")
+        print(f"   Inspection Cost: ${finding.estimated_filing_cost:,.0f}")
+        print()
+        
+        print("🔒 DECISION PROOF:")
+        decision_hash = "b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef1234567"
+        print(f"   SHA-256 Hash: {decision_hash}")
+        print(f"   Timestamp: {finding.detected_at.isoformat()}Z")
+        print(f"   Agent: Scout (LL152 Cycle Monitor)")
+        print()
+        
+        return {
+            "inspection_required": True,
+            "violation_type": "LL152_OVERDUE_INSPECTION",
+            "district": finding.community_district,
+            "decision_hash": decision_hash,
+            "legal_basis": finding.legal_basis,
+            "explanation": finding.explanation,
+            "suggested_action": finding.suggested_action,
+            "projected_fine": finding.projected_fine,
+            "cost_usd": 0.0003  # Sub-penny cost
+        }
+    else:
+        print("✅ No LL152 violations detected")
+        return {
+            "inspection_required": False,
+            "cost_usd": 0.0003
+        }
 
 
 def demonstrate_scout_guard_fixer_loop(verbose: bool = False):
@@ -393,15 +451,17 @@ def print_telemetry_summary(results: dict, ll149_result: dict, ll152_result: dic
     
     print("💰 COST BREAKDOWN (Sub-Penny Economics):")
     print()
-    print(f"   Scout (Opportunity Discovery):     ${scout_cost:.7f}")
-    print(f"   Guard (COI Validation):            ${guard_cost:.7f}")
+    print(f"   Scout (Opportunity Discovery):     ${scout_cost:.7f} USD")
+    print(f"   Guard (COI Validation):            ${guard_cost:.7f} USD")
     if results["fixer_triggered"]:
-        print(f"   Fixer (Remediation Email):         ${fixer_cost:.7f}")
-    print(f"   LL149 Conflict Detection:          ${ll149_cost:.7f}")
-    print(f"   LL152 Cycle Monitoring:            ${ll152_cost:.7f}")
+        print(f"   Fixer (Remediation Email):         ${fixer_cost:.7f} USD")
+    print(f"   LL149 Conflict Detection:          ${ll149_cost:.7f} USD")
+    print(f"   LL152 Cycle Monitoring:            ${ll152_cost:.7f} USD")
     print("   " + "-" * 60)
-    print(f"   Pipeline Total:                    ${pipeline_cost:.7f}")
-    print(f"   Total System Cost:                 ${total_cost:.7f}")
+    print(f"   Pipeline Total:                    ${pipeline_cost:.7f} USD")
+    print(f"   Total System Cost:                 ${total_cost:.7f} USD")
+    print()
+    print(f"   ✅ Total token cost (USD): {total_cost:.7f}")
     print()
     
     # Performance metrics
@@ -414,7 +474,7 @@ def print_telemetry_summary(results: dict, ll149_result: dict, ll152_result: dic
     print("📈 ROI COMPARISON:")
     print()
     manual_cost = 25.00  # Industry standard for manual review
-    cost_reduction = manual_cost / total_cost
+    cost_reduction = manual_cost / total_cost if total_cost > 0 else 0
     savings = manual_cost - total_cost
     
     print(f"   Manual Review Cost:        ${manual_cost:.2f}/doc")
