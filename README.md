@@ -1,12 +1,16 @@
-# 🏗️ Construction Compliance AI
+# 🏗️ ConComplyAi - Self-Healing Compliance Command Center
 
 ![CI Status](https://github.com/your-username/construction-compliance-ai/actions/workflows/ci.yml/badge.svg)
 
-> **$1.49M saved per critical violation • 30 days → 2 hours • 92% accuracy • 379× cost reduction on document processing**
+> **$1.49M saved per critical violation • 30 days → 2 hours • 92% accuracy • 379× cost reduction • AUTONOMOUS self-healing**
 
-AI-powered construction site compliance system with **multi-agent collaboration**, **contractor document validation**, and **synthetic data generation**. Features parallel agent execution, adversarial validation, OCR extraction with audit trails, and privacy-compliant PII redaction.
+AI-powered construction compliance platform with **Multi-Agent Self-Healing Suite**, **autonomous correction requests**, **real-time monitoring**, and **human-on-the-loop audit trail**. Features parallel agent execution, adversarial validation, Sentinel heartbeat monitoring, and immutable compliance logging for 2026 standards.
 
-## 🆕 Latest Enhancements
+## 🆕 Latest: Multi-Agent Self-Healing Suite
+
+### **FROM**: Passive Validation → **TO**: Autonomous Compliance Management
+
+The system now **acts autonomously** to maintain compliance:
 
 ### 1. **Contractor Document Validation** (⭐ NEW)
 - **Automated Extraction**: COI, Licenses, OSHA logs, Lien waivers
@@ -28,7 +32,16 @@ AI-powered construction site compliance system with **multi-agent collaboration*
 - **Customizable**: Easy to integrate with your existing React applications
 - **Clean Design**: Professional dashboard layout ready for your data
 
-### 3. Multi-Agent Collaboration (Elite System Architecture)
+### 3. **Sentinel-Scope Integration** - Real-Time Monitoring
+- **Unified Compliance Command Center**: Validator Station + Sentinel Live Feed
+- **File System Watching**: Auto-detect new documents (PDF, JPG, PNG)
+- **Expiration Tracking**: 30-day advance warnings for COI, licenses, permits
+- **Real-time Events**: Document detection, compliance violations, site updates
+- **Unified Ingestion API**: Automatic triggering of extraction agents
+- **Live Feed UI**: Real-time dashboard with 5-second auto-refresh
+- **22 passing tests**: Comprehensive test coverage
+
+### 4. Multi-Agent Collaboration (Elite System Architecture)
 - **5 Specialized Agents**: Vision, Permit, Synthesis, Red Team, Risk Scorer
 - **Parallel Execution**: Real-time debate and consensus mechanisms
 - **Adversarial Validation**: Red Team agent reduces false positives by 15%
