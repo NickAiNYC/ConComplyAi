@@ -865,6 +865,181 @@ Project: {deficiency_report.project_id}
         )
 
 
+    def generate_ll152_remediation(
+        self,
+        building_bin: str,
+        building_address: str,
+        community_district: int,
+        owner_name: str,
+        owner_contact: Optional[str] = None,
+        parent_handshake: Optional[AgentHandshakeV2] = None
+    ) -> Dict[str, Any]:
+        """
+        Generate Local Law 152 (Gas Piping) remediation template
+        
+        2026 UPGRADE: Digital filing logic for missing GPS2 certifications
+        Targets buildings in Community Districts 4, 6, 8, 9, and 16 (2026 due-cycle)
+        
+        NYC Local Law 152 requires periodic inspections of gas piping systems.
+        Buildings in specific CDs are due in 2026. Non-compliance results in $10,000 fine.
+        
+        Args:
+            building_bin: NYC Building Identification Number
+            building_address: Full building address
+            community_district: NYC Community District (1-59)
+            owner_name: Property owner name
+            owner_contact: Owner phone/email if available
+            parent_handshake: Previous agent's handshake (for audit chain)
+        
+        Returns:
+            Dict containing LL152Remediation object and metadata
+        """
+        from packages.shared.models.compliance_models import LL152Remediation
+        from datetime import datetime, timedelta
+        
+        # Check if building is in 2026 due-cycle
+        due_cycle_districts = [4, 6, 8, 9, 16]
+        in_due_cycle = community_district in due_cycle_districts
+        
+        if not in_due_cycle:
+            # Not in 2026 due-cycle, return empty result
+            return {
+                "in_due_cycle": False,
+                "community_district": community_district,
+                "message": f"CD {community_district} not in 2026 due-cycle (CDs 4,6,8,9,16)"
+            }
+        
+        # Calculate deadline - assume end of 2026 for due-cycle districts
+        deadline = datetime(2026, 12, 31, 23, 59, 59)
+        
+        # Draft LL152 remediation email
+        subject_line = f"[ACTION REQUIRED] NYC Local Law 152 GPS2 Filing Due - CD{community_district} - Avoid $10K Fine"
+        
+        email_body = f"""Dear {owner_name},
+
+**NYC Local Law 152 Compliance Alert - Gas Piping System Inspection**
+
+Your property at **{building_address}** (BIN: {building_bin}) is located in Community District {community_district}, which is in the 2026 due-cycle for Local Law 152 compliance.
+
+**What is Local Law 152?**
+NYC Local Law 152 requires periodic GPS2 (Gas Piping System) inspections and certifications for all buildings with gas service. This ensures gas piping safety and prevents leaks.
+
+**Your Required Action:**
+1. Hire a Licensed Master Plumber (LMP) to conduct GPS2 inspection
+2. LMP must file GPS2 certification with NYC DOB
+3. **Deadline: {deadline.strftime('%B %d, %Y')}**
+
+**Non-Compliance Penalty:** $10,000 fine from NYC DOB + daily penalties
+
+**Estimated Cost:** $2,000 - $3,000 (inspection + filing)
+**Fine if Missed:** $10,000 base + $250/day
+
+**Community District {community_district} Filing Status:**
+Your CD is in the 2026 due-cycle. DOB is actively enforcing LL152 in these priority districts.
+
+**Next Steps:**
+1. Contact a Licensed Master Plumber for GPS2 inspection
+2. Ensure filing is completed BEFORE deadline
+3. Keep GPS2 certificate on file
+
+**Need Assistance?**
+We can connect you with qualified LMPs familiar with LL152 compliance.
+
+Contact: {owner_contact if owner_contact else 'N/A'}
+Property: {building_address}
+BIN: {building_bin}
+
+This is a mandatory NYC compliance requirement. Delays result in significant fines.
+
+Best regards,
+ConComplyAi Compliance Team
+Automated Local Law 152 Monitoring System
+"""
+        
+        # Create LL152Remediation object
+        ll152_remediation = LL152Remediation(
+            building_bin=building_bin,
+            building_address=building_address,
+            community_district=community_district,
+            owner_name=owner_name,
+            owner_contact=owner_contact,
+            remediation_type="GPS2_FILING_REQUIRED",
+            deadline=deadline,
+            estimated_filing_cost=2500.0,
+            projected_fine_if_missed=10000.0,
+            subject_line=subject_line,
+            email_template=email_body
+        )
+        
+        # Create decision proof
+        logic_citations = [
+            LogicCitation(
+                standard=ComplianceStandard.NYC_BC_3301,  # Using existing, ideally add LL152
+                clause="NYC Local Law 152 of 2016 (Gas Piping)",
+                interpretation=(
+                    f"Buildings in Community District {community_district} are in the 2026 due-cycle "
+                    "for GPS2 gas piping system inspections. Failure to file results in $10,000 fine."
+                ),
+                confidence=0.99
+            )
+        ]
+        
+        reasoning = (
+            f"Fixer identified building {building_bin} in Community District {community_district} "
+            f"as subject to 2026 LL152 compliance cycle. Drafted automated remediation template "
+            f"for property owner {owner_name} with deadline {deadline.strftime('%Y-%m-%d')}."
+        )
+        
+        decision_proof = create_decision_proof(
+            agent_name="Fixer",
+            decision="LL152_REMEDIATION_DRAFTED",
+            input_data={
+                "building_bin": building_bin,
+                "community_district": community_district,
+                "owner_name": owner_name,
+                "in_due_cycle": True,
+                "deadline": deadline.isoformat()
+            },
+            logic_citations=logic_citations,
+            reasoning=reasoning,
+            confidence=0.99,
+            risk_level="HIGH",  # High risk due to $10K fine
+            estimated_financial_impact=-10000.0,  # Potential fine
+            cost_usd=TEMPLATE_GENERATION_COST_USD
+        )
+        
+        # Create handshake if part of multi-agent chain
+        handshake = None
+        if parent_handshake:
+            handshake = AgentHandshakeV2(
+                source_agent=AgentRole.FIXER,
+                target_agent=None,  # Terminal - email drafted
+                project_id=f"LL152-{building_bin}",
+                decision_hash=decision_proof.proof_hash,
+                parent_handshake_id=parent_handshake.decision_hash,
+                transition_reason="ll152_remediation_drafted",
+                metadata={
+                    "building_bin": building_bin,
+                    "community_district": community_district,
+                    "remediation_type": "GPS2_FILING_REQUIRED",
+                    "projected_fine": 10000.0
+                }
+            )
+        
+        return {
+            "ll152_remediation": ll152_remediation,
+            "in_due_cycle": True,
+            "community_district": community_district,
+            "decision_proof_obj": decision_proof,
+            "handshake": handshake,
+            "cost_usd": TEMPLATE_GENERATION_COST_USD,
+            "email_subject": subject_line,
+            "email_body": email_body,
+            "projected_fine": 10000.0,
+            "deadline": deadline
+        }
+
+
 # Convenience function for decorated usage with telemetry
 @track_agent_cost(agent_name="Fixer", model_name="claude-3-haiku")
 def draft_broker_email(
@@ -892,4 +1067,40 @@ def draft_broker_email(
         deficiency_report=deficiency_report,
         coi_metadata=coi_metadata,
         parent_handshake=parent_handshake
+    )
+
+
+# 2026 UPGRADE: Standalone helper for LL152 remediation
+def generate_ll152_remediation_standalone(
+    building_bin: str,
+    building_address: str,
+    community_district: int,
+    owner_name: str,
+    owner_contact: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Standalone function for generating LL152 remediation templates
+    Can be called directly without OutreachAgent instance
+    
+    2026 UPGRADE: Digital filing logic for missing GPS2 certifications
+    Targets buildings in Community Districts 4, 6, 8, 9, and 16 (2026 due-cycle)
+    
+    Args:
+        building_bin: NYC Building Identification Number
+        building_address: Full building address
+        community_district: NYC Community District (1-59)
+        owner_name: Property owner name
+        owner_contact: Owner phone/email if available
+    
+    Returns:
+        Dict containing LL152Remediation and metadata
+    """
+    agent = OutreachAgent()
+    return agent.generate_ll152_remediation(
+        building_bin=building_bin,
+        building_address=building_address,
+        community_district=community_district,
+        owner_name=owner_name,
+        owner_contact=owner_contact,
+        parent_handshake=None
     )

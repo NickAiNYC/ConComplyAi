@@ -31,7 +31,9 @@ class GuardOutput(AgentOutputProtocol):
 def validate_coi(
     pdf_path: Path,
     parent_handshake: Optional[AgentHandshakeV2] = None,
-    project_id: Optional[str] = None
+    project_id: Optional[str] = None,
+    permit_number: Optional[str] = None,
+    check_ll149: bool = True
 ) -> Dict[str, Any]:
     """
     Validate Certificate of Insurance with AgentHandshakeV2 support
@@ -39,10 +41,14 @@ def validate_coi(
     This is the new entry point for Guard validation that supports
     the multi-agent handshake protocol.
     
+    2026 UPGRADE: Added permit_number and check_ll149 parameters for LL149 validation
+    
     Args:
         pdf_path: Path to COI PDF file
         parent_handshake: Optional handshake from Scout agent (or other parent)
         project_id: Optional project ID (derived from parent_handshake if provided)
+        permit_number: Optional DOB permit number for LL149 CS validation
+        check_ll149: Whether to check for LL149 violations (default: True)
     
     Returns:
         Dict containing:
@@ -50,12 +56,17 @@ def validate_coi(
         - handshake: AgentHandshakeV2 for next agent in chain
         - guard_output: GuardOutput conforming to AgentOutputProtocol
         - decision_proof_obj: DecisionProof object
+        - ll149_violation: LL149Violation object if detected (2026 upgrade)
         - cost_usd: Processing cost
         - input_tokens: Token usage
         - output_tokens: Token usage
     """
-    # Call the internal validation function
-    internal_result = _validate_coi_internal(pdf_path)
+    # Call the internal validation function with LL149 params
+    internal_result = _validate_coi_internal(
+        pdf_path,
+        permit_number=permit_number,
+        check_ll149=check_ll149
+    )
     
     # Extract results
     compliance_result: ComplianceResult = internal_result["result"]

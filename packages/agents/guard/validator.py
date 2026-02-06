@@ -2,9 +2,12 @@
 Guard Agent Validator - COI Validation with OCR -> Validation -> Proof Loop
 Simulates the full Guard agent workflow for investor demo
 
+2026 UPGRADE: Added Local Law 149 (One-Job Rule) validation for Construction Superintendents
+
 BINDING CONSTRAINTS:
 - IF OCR confidence < 95%, RETURN status="ILLEGIBLE"
 - IF deficiency found, citations MUST reference specific regulation
+- IF CS has >1 active Primary designation, trigger HIGH_RISK_MANDATE alert (LL149)
 - Integration: MUST use @track_agent_cost decorator
 - Integration: MUST use DecisionProof.generate()
 - Cost target: Keep total under $0.010 (10% margin above $0.007 target)
@@ -22,6 +25,9 @@ from packages.core.audit import (
     create_decision_proof
 )
 from packages.core.telemetry import track_agent_cost
+from packages.shared.models.compliance_models import (
+    ConstructionSuperintendent, LL149Violation
+)
 
 
 class ComplianceResult(BaseModel):
@@ -181,13 +187,110 @@ def _parse_coi_fields(extracted_text: str, pdf_path: str) -> Dict[str, Any]:
     }
 
 
+def _check_cs_ll149_compliance(
+    permit_number: Optional[str] = None,
+    cs_name: Optional[str] = None
+) -> Optional[LL149Violation]:
+    """
+    Check Construction Superintendent compliance with Local Law 149 (One-Job Rule)
+    
+    NYC Local Law 149 of 2026: A Construction Superintendent can only be designated
+    as 'Primary' on ONE active permit at a time.
+    
+    Args:
+        permit_number: DOB Job Filing Number from Scout
+        cs_name: Construction Superintendent name (if provided in permit data)
+    
+    Returns:
+        LL149Violation object if violation detected, None if compliant
+    """
+    # In production: Query NYC DOB BIS database for CS designations
+    # For demo: Simulate database lookup with deterministic violations
+    
+    if not permit_number or not cs_name:
+        # Cannot check without permit/CS data
+        return None
+    
+    # Simulate CS database - some CS names trigger violations for demo
+    # In production: SELECT * FROM cs_designations WHERE cs_license = ? AND is_active = TRUE
+    violation_trigger_names = [
+        "John Smith",
+        "Michael Chen", 
+        "David Rodriguez",
+        "Sarah Johnson"
+    ]
+    
+    if cs_name in violation_trigger_names:
+        # Simulate finding CS on multiple active jobs
+        violation = LL149Violation(
+            cs_name=cs_name,
+            cs_license_number=f"CS-{hash(cs_name) % 999999:06d}",
+            active_primary_permits=[
+                permit_number,  # Current permit
+                f"{int(permit_number) + 1:09d}",  # Another active job
+            ],
+            violation_severity="HIGH_RISK_MANDATE",
+            citation="NYC Local Law 149 of 2026 (The One-Job Rule)",
+            recommended_action=(
+                f"CS {cs_name} is currently designated as Primary on multiple active permits. "
+                "Per LL149, designate a backup CS as primary on one project, or hire an additional CS."
+            ),
+            detected_at=datetime.utcnow()
+        )
+        return violation
+    
+    return None
+
+
+def _get_permit_cs_info(permit_number: Optional[str]) -> Optional[Dict[str, Any]]:
+    """
+    Simulate looking up Construction Superintendent info from permit data
+    In production: Query NYC DOB BIS API or internal database
+    
+    Returns:
+        Dict with CS info if available, None otherwise
+    """
+    if not permit_number:
+        return None
+    
+    # Simulate CS data based on permit number
+    # For permits ending in certain digits, return CS info for testing
+    if permit_number and (int(permit_number[-2:]) % 3 == 0):
+        cs_names = [
+            "John Smith",
+            "Michael Chen",
+            "David Rodriguez", 
+            "Sarah Johnson",
+            "Robert Williams"
+        ]
+        # Pick CS based on permit number
+        cs_idx = int(permit_number[-3:]) % len(cs_names)
+        cs_name = cs_names[cs_idx]
+        
+        return {
+            "cs_name": cs_name,
+            "cs_license": f"CS-{hash(cs_name) % 999999:06d}",
+            "designation": "Primary"
+        }
+    
+    return None
+
+
 @track_agent_cost(agent_name="Guard", model_name="claude-3-haiku")
-def validate_coi(pdf_path: Path) -> Dict[str, Any]:
+def validate_coi(
+    pdf_path: Path,
+    permit_number: Optional[str] = None,
+    check_ll149: bool = True
+) -> Dict[str, Any]:
     """
     Validate Certificate of Insurance through OCR -> Validation -> Proof loop
     
+    2026 UPGRADE: Now includes Local Law 149 (One-Job Rule) validation
+    
     Args:
         pdf_path: Path to COI PDF file (simulated - actual OCR not implemented)
+        permit_number: Optional DOB permit number for LL149 CS validation
+        check_ll149: Whether to check for LL149 violations (default: True)
     
     Returns:
         Dict containing ComplianceResult and metadata
@@ -344,6 +447,39 @@ def validate_coi(pdf_path: Path) -> Dict[str, Any]:
             )
         )
     
+    # 2026 UPGRADE: Check Local Law 149 (One-Job Rule) for Construction Superintendent
+    ll149_violation = None
+    if check_ll149 and permit_number:
+        # Get CS info from permit
+        cs_info = _get_permit_cs_info(permit_number)
+        if cs_info:
+            ll149_violation = _check_cs_ll149_compliance(
+                permit_number=permit_number,
+                cs_name=cs_info.get("cs_name")
+            )
+            
+            if ll149_violation:
+                # Add LL149 violation to deficiencies
+                deficiency = (
+                    f"LOCAL LAW 149 VIOLATION: Construction Superintendent {ll149_violation.cs_name} "
+                    f"is designated as Primary on {len(ll149_violation.active_primary_permits)} active permits. "
+                    f"LL149 limits CS to one Primary designation per active job."
+                )
+                citation = ll149_violation.citation
+                deficiencies.append(deficiency)
+                citations.append(citation)
+                logic_citations.append(
+                    LogicCitation(
+                        standard=ComplianceStandard.NYC_BC_3301,  # Using existing standard, ideally add LL149
+                        clause="Local Law 149 §1 (The One-Job Rule)",
+                        interpretation=(
+                            "Construction Superintendent may only serve as Primary CS on one active permit. "
+                            "This prevents CS over-extension and ensures adequate site supervision."
+                        ),
+                        confidence=0.99
+                    )
+                )
+    
     # Add passing citations if compliant
     if not deficiencies:
         logic_citations.append(
@@ -422,9 +558,11 @@ def validate_coi(pdf_path: Path) -> Dict[str, Any]:
         "output_tokens": output_tokens,
         "result": result,
         "decision_proof_obj": decision_proof,
+        "ll149_violation": ll149_violation,  # 2026 UPGRADE: Include LL149 violation if detected
         "metadata": {
             "document_id": document_id,
-            "success": status == "APPROVED"
+            "success": status == "APPROVED",
+            "permit_number": permit_number  # Include permit for traceability
         }
     }
     
