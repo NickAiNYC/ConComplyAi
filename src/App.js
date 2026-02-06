@@ -3,6 +3,8 @@ import SuccessionShieldEnterprise from './components/SuccessionShieldEnterprise'
 import DocumentUploadStation from './components/DocumentUploadStation';
 import ContractorDocVerifier from './components/ContractorDocVerifier';
 import SentinelLiveFeed from './components/SentinelLiveFeed';
+import VeteranDashboard from './components/VeteranDashboard';
+import GovernanceDashboard from './components/GovernanceDashboard';
 
 /**
  * Main Application Component - Unified Compliance Command Center
@@ -11,13 +13,15 @@ import SentinelLiveFeed from './components/SentinelLiveFeed';
  * Integrated with Sentinel-Scope for real-time monitoring
  * 
  * Features:
+ * - Veteran Dashboard - Action Center (2027 enhancements)
+ * - Governance Dashboard - Agent Quality & NYC Compliance (2026-2027)
  * - Site compliance dashboard (violation detection) - "Validator Station"
  * - Sentinel Live Feed - Real-time monitoring
  * - Document upload and processing
  * - Document verification with comparison view
  */
 function App() {
-  const [activeView, setActiveView] = useState('dashboard');
+  const [activeView, setActiveView] = useState('veteran');
   const [processedDocument, setProcessedDocument] = useState(null);
 
   const handleDocumentProcessed = (doc) => {
@@ -33,6 +37,18 @@ function App() {
           🏗️ ConComplyAi - Compliance Command Center
         </div>
         <div style={styles.navLinks}>
+          <button 
+            style={activeView === 'veteran' ? styles.navButtonActive : styles.navButton}
+            onClick={() => setActiveView('veteran')}
+          >
+            🎯 Veteran Dashboard
+          </button>
+          <button 
+            style={activeView === 'governance' ? styles.navButtonActive : styles.navButton}
+            onClick={() => setActiveView('governance')}
+          >
+            🛡️ Governance
+          </button>
           <button 
             style={activeView === 'dashboard' ? styles.navButtonActive : styles.navButton}
             onClick={() => setActiveView('dashboard')}
@@ -64,6 +80,14 @@ function App() {
 
       {/* Content */}
       <div style={styles.content}>
+        {activeView === 'veteran' && (
+          <VeteranDashboard />
+        )}
+
+        {activeView === 'governance' && (
+          <GovernanceDashboard />
+        )}
+
         {activeView === 'dashboard' && (
           <SuccessionShieldEnterprise />
         )}
