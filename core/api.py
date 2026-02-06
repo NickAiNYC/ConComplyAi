@@ -126,6 +126,9 @@ async def unified_ingestion(request: IngestRequest):
             priority=2
         )
         
+        # Add event to sentinel service
+        sentinel_service.monitoring_events.append(event)
+        
         # Trigger extraction through Sentinel
         extraction_request = sentinel_service.trigger_extraction(event)
         
@@ -184,11 +187,16 @@ async def mark_event_processed(event_id: str):
     return {'status': 'success', 'event_id': event_id}
 
 
+class WatchPathRequest(BaseModel):
+    """Request model for adding watch path"""
+    path: str
+
+
 @app.post("/api/sentinel/watch-path")
-async def add_watch_path(path: str):
+async def add_watch_path(request: WatchPathRequest):
     """Add a directory path to watch for new documents"""
-    if path not in sentinel_service.watch_config.watch_paths:
-        sentinel_service.watch_config.watch_paths.append(path)
+    if request.path not in sentinel_service.watch_config.watch_paths:
+        sentinel_service.watch_config.watch_paths.append(request.path)
     
     return {
         'status': 'success',
@@ -196,22 +204,30 @@ async def add_watch_path(path: str):
     }
 
 
-@app.post("/api/sentinel/expiration-track")
-async def track_expiration(
-    item_id: str,
-    item_type: str,
-    expiration_date: str,
+class ExpirationTrackRequest(BaseModel):
+    """Request model for expiration tracking"""
+    item_id: str
+    item_type: str
+    expiration_date: str
     metadata: Optional[Dict[str, Any]] = None
-):
+
+
+@app.post("/api/sentinel/expiration-track")
+async def track_expiration(request: ExpirationTrackRequest):
     """Add an item to track for expiration warnings (30-day threshold)"""
     from datetime import datetime
     
-    exp_date = datetime.fromisoformat(expiration_date)
-    sentinel_service.add_expiring_item(item_id, item_type, exp_date, metadata)
+    exp_date = datetime.fromisoformat(request.expiration_date)
+    sentinel_service.add_expiring_item(
+        request.item_id, 
+        request.item_type, 
+        exp_date, 
+        request.metadata
+    )
     
     return {
         'status': 'success',
-        'message': f'Tracking {item_type} {item_id} for expiration'
+        'message': f'Tracking {request.item_type} {request.item_id} for expiration'
     }
 
 
