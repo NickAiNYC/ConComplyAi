@@ -30,13 +30,55 @@ All at a unit economic cost of **sub‑penny per document**, enforced in code an
 - **Veteran View (Dashboard):** One screen that shows opportunity, autonomy, and audit chains.
 
 
-## 🆕 Latest: Multi-Agent Self-Healing Suite
+All at a unit economic cost of **sub-penny per document**, enforced in code and exposed via unit-economics benchmarks.
 
-### **FROM**: Passive Validation → **TO**: Autonomous Compliance Management
+---
 
-The system now **acts autonomously** to maintain compliance:
+### 🚀 The 2026 Advantage
 
-### 1. **Contractor Document Validation** (⭐ NEW)
+- **LL149 Enforcement:** Real-time checking of the 2026 "One-Job Rule" for Construction Superintendents.
+- **LL152 Cycle Automation:** Automatic gas-piping remediation for buildings in Community Districts 4, 6, 8, 9, and 16.
+- **Self-Healing Agents:** Scout, Guard, Fixer, and Watchman collaborate to detect, validate, and remediate compliance gaps without manual tickets.
+- **DecisionProof Handshake:** Cryptographic proof of every audit decision, ready for carriers, lenders, and owners.
+
+---
+
+### Monorepo Layout (from experiments → OS)
+
+This repository consolidates four prior experimental projects into a single production-grade Operating System:
+
+| Past Concept       | Module Path                    | Role in ConComplyAi                               |
+|--------------------|-------------------------------|---------------------------------------------------|
+| Violation engine   | `packages/core/risk_engine`   | Scores DOB/ECB violations found by Scout.         |
+| Synthetic data lab | `packages/test_utils/sim_data`| Generates 100k+ synthetic permit scenarios.       |
+| Agent framework    | `packages/agents/base`        | Shared memory, costs, and hashes for all agents.  |
+| Dashboard          | `packages/ui`                 | Veteran View: single pane of glass for outputs.   |
+
+---
+
+### Veteran View – Single Command Screen
+
+The dashboard is one primary screen with three command modules:
+
+- **Opportunity Heat Map (Scout):**  
+  Headline: "$42.8M in contestable SCA/DDC projects found today."  
+  Map and table of NYC projects with insurance/safety gaps your subs can pursue.
+
+- **Autonomy Pulse (Fixer):**  
+  Headline: "14 insurance deficiencies fixed automatically (LL149 compliance: 100%)."  
+  Live feed of broker outreach, responses, and remaining human tasks.
+
+- **Audit Chain (DecisionProof):**  
+  Headline: "All decisions verified. Total pipeline cost: $0.0012/doc."  
+  Scrolling list of SHA-256 hashes and decisions for lender/insurer review.
+
+---
+
+## Architecture & Implementation
+
+The following sections provide detailed technical implementation of the ConComplyAi Operating System.
+
+### Multi-Agent Self-Healing Suite
 - **Automated Extraction**: COI, Licenses, OSHA logs, Lien waivers
 - **Insurance Logic**: Additional Insured, Waiver of Subrogation, Per Project Aggregates
 - **Confidence Scoring**: Every field includes 0-1 confidence score

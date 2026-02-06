@@ -1,6 +1,8 @@
 """
 Enhanced Agent Handshake Protocol - Multi-Agent Integration
 Extends existing schemas with Scout/Guard/Watchman/Fixer coordination
+
+2026 UPGRADE: Added handshake_version and source_system for production API
 """
 from typing import Literal, Dict, Any, Optional
 from pydantic import BaseModel, Field
@@ -17,17 +19,38 @@ class AgentRole(str, Enum):
     INTELLIGENCE = "Intelligence"  # Geospatial/data layer
 
 
+class SourceSystem(str, Enum):
+    """
+    2026 UPGRADE: Source systems for handshake ingestion
+    Tracks where the compliance workflow originated
+    """
+    PROCORE_COI_PULL = "PROCORE_COI_PULL"  # Procore webhook integration
+    EXCEL_CSV_DROP = "EXCEL_CSV_DROP"      # CSV file upload
+    EMAIL_FORWARD = "EMAIL_FORWARD"        # Email forwarding integration
+    MANUAL_UPLOAD = "MANUAL_UPLOAD"        # Direct portal upload
+    API_DIRECT = "API_DIRECT"              # Direct API call
+
+
 class AgentHandshakeV2(BaseModel):
     """
     Enhanced agent handshake for cryptographic audit chains.
     Links agent decisions into an immutable audit trail.
     Required for NYC Local Law 144 compliance.
     
+    2026 UPGRADE: Added handshake_version and source_system fields
+    
     Each agent output generates a handshake that:
     1. Links to parent decision via SHA-256 hash
     2. Specifies next agent in the chain
     3. Creates tamper-proof audit trail
+    4. Tracks source system for compliance reporting
     """
+    # 2026 UPGRADE: Version tracking
+    handshake_version: str = Field(
+        default="2.0",
+        description="Handshake protocol version (current: 2.0)"
+    )
+    
     # Identity
     source_agent: AgentRole = Field(description="Agent generating this handshake")
     target_agent: Optional[AgentRole] = Field(
@@ -37,6 +60,12 @@ class AgentHandshakeV2(BaseModel):
     
     # Project context
     project_id: str = Field(description="Unique project/opportunity identifier")
+    
+    # 2026 UPGRADE: Source system tracking
+    source_system: Optional[SourceSystem] = Field(
+        default=None,
+        description="System that originated this workflow"
+    )
     
     # Audit chain
     decision_hash: str = Field(
@@ -63,9 +92,11 @@ class AgentHandshakeV2(BaseModel):
     def to_dict(self) -> Dict[str, Any]:
         """Export to dict for hashing"""
         return {
+            "handshake_version": self.handshake_version,
             "source_agent": self.source_agent.value,
             "target_agent": self.target_agent.value if self.target_agent else None,
             "project_id": self.project_id,
+            "source_system": self.source_system.value if self.source_system else None,
             "decision_hash": self.decision_hash,
             "parent_handshake_id": self.parent_handshake_id,
             "timestamp": self.timestamp.isoformat(),

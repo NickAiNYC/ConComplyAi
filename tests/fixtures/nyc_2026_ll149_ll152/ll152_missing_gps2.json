@@ -1,0 +1,21 @@
+{
+  "test_name": "LL152 Missing GPS2 - Community District 6",
+  "test_id": "LL152-GPS2-001",
+  "seed": 43,
+  "building": {
+    "building_bin": "1234567",
+    "building_address": "789 Broadway, Manhattan",
+    "community_district": 6,
+    "has_gps2_certification": false,
+    "owner_name": "Manhattan Properties LLC",
+    "owner_contact": "contact@manhattanproperties.com"
+  },
+  "expected_finding": {
+    "legal_basis": "LL152 - Local Law 152 of 2016 (Gas Piping System Periodic Inspection)",
+    "explanation": "Building 1234567 in Community District 6 is in the 2026 LL152 due-cycle. GPS2 gas piping inspection certification is MISSING. Failure to file by December 31, 2026 results in $10,000 fine plus daily penalties.",
+    "suggested_action": "Hire Licensed Master Plumber (LMP) to conduct GPS2 inspection and file certification with DOB.",
+    "projected_fine": 10000.0,
+    "in_2026_due_cycle": true
+  },
+  "expected_hash": "z9y8x7w6v5u4t3s2r1q0p9o8n7m6l5k4j3i2h1g0f9e8d7c6b5a4"
+}
