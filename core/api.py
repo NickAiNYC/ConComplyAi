@@ -1,4 +1,4 @@
-"""FastAPI Health Endpoint - Production observability"""
+"""FastAPI API - Production observability + Self-Healing Suite"""
 from fastapi import FastAPI, Response, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
@@ -6,9 +6,15 @@ from typing import Dict, Any, List, Optional
 from pydantic import BaseModel
 from core.config import BUSINESS_CONFIG
 from core.services import SentinelService
-from core.models import DocumentType
+from core.services.sentinel_heartbeat import SentinelHeartbeat
+from core.services.audit_logger import get_audit_logger
+from core.agents.outreach_agent import OutreachAgent
+from packages.shared.models import DocumentType, ExpirationStatus
 
-app = FastAPI(title="Construction Compliance AI", version="1.0.0")
+app = FastAPI(
+    title="ConComplyAi - Self-Healing Compliance Command Center", 
+    version="2.0.0-self-healing"
+)
 
 # CORS middleware for React frontend
 app.add_middleware(
@@ -19,8 +25,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize Sentinel Service
+# Initialize Self-Healing Suite
+audit_logger = get_audit_logger()
 sentinel_service = SentinelService()
+heartbeat = SentinelHeartbeat(sentinel_service, audit_logger)
+outreach_agent = OutreachAgent(audit_logger)
 
 
 @app.get("/health")
@@ -228,6 +237,179 @@ async def track_expiration(request: ExpirationTrackRequest):
     return {
         'status': 'success',
         'message': f'Tracking {request.item_type} {request.item_id} for expiration'
+    }
+
+
+
+
+# ============================================================================
+# SELF-HEALING SUITE ENDPOINTS
+# ============================================================================
+
+class OutreachRequestModel(BaseModel):
+    """Request model for outreach agent"""
+    contractor_id: str
+    contractor_name: str
+    contact_email: str
+    document_id: str
+    document_type: str
+    validation_errors: List[str]
+
+
+class HeartbeatRegisterRequest(BaseModel):
+    """Request to register contractor for heartbeat monitoring"""
+    contractor_id: str
+    contractor_name: str
+    insurance_status: str  # VALID, EXPIRED, EXPIRING_SOON
+    insurance_expiration: Optional[str] = None
+    license_status: Optional[str] = "VALID"
+    license_expiration: Optional[str] = None
+
+
+@app.post("/api/outreach/send")
+async def send_outreach(request: OutreachRequestModel):
+    """
+    Send automated correction request to contractor
+    Part of Self-Healing Suite
+    """
+    try:
+        outreach_request = outreach_agent.send_outreach(
+            contractor_id=request.contractor_id,
+            contractor_name=request.contractor_name,
+            contact_email=request.contact_email,
+            document_id=request.document_id,
+            document_type=request.document_type,
+            validation_errors=request.validation_errors
+        )
+        
+        return {
+            'status': 'success',
+            'request_id': outreach_request.request_id,
+            'delivered': outreach_request.delivered,
+            'subject': outreach_request.subject,
+            'priority': outreach_request.priority
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/outreach/statistics")
+async def get_outreach_stats():
+    """Get outreach agent statistics"""
+    return outreach_agent.get_outreach_statistics()
+
+
+@app.post("/api/heartbeat/register")
+async def register_contractor(request: HeartbeatRegisterRequest):
+    """Register contractor for heartbeat monitoring"""
+    try:
+        from datetime import datetime
+        
+        ins_exp = datetime.fromisoformat(request.insurance_expiration) if request.insurance_expiration else None
+        lic_exp = datetime.fromisoformat(request.license_expiration) if request.license_expiration else None
+        
+        heartbeat.register_contractor(
+            contractor_id=request.contractor_id,
+            contractor_name=request.contractor_name,
+            insurance_status=ExpirationStatus(request.insurance_status),
+            insurance_expiration=ins_exp,
+            license_status=ExpirationStatus(request.license_status) if request.license_status else ExpirationStatus.VALID,
+            license_expiration=lic_exp
+        )
+        
+        return {'status': 'success', 'contractor_id': request.contractor_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/heartbeat/on-site/{contractor_id}")
+async def mark_contractor_on_site(contractor_id: str, site_id: str):
+    """Mark contractor as detected on-site - triggers risk assessment"""
+    heartbeat.mark_on_site(contractor_id, site_id)
+    return {'status': 'success', 'contractor_id': contractor_id, 'site_id': site_id}
+
+
+@app.post("/api/heartbeat/off-site/{contractor_id}")
+async def mark_contractor_off_site(contractor_id: str):
+    """Mark contractor as off-site"""
+    heartbeat.mark_off_site(contractor_id)
+    return {'status': 'success', 'contractor_id': contractor_id}
+
+
+@app.get("/api/heartbeat/statistics")
+async def get_heartbeat_stats():
+    """Get heartbeat monitoring statistics"""
+    return heartbeat.get_statistics()
+
+
+@app.get("/api/heartbeat/high-risk")
+async def get_high_risk_contractors():
+    """Get all contractors at HIGH or CRITICAL risk"""
+    contractors = heartbeat.get_high_risk_contractors()
+    return {
+        'count': len(contractors),
+        'contractors': [
+            {
+                'contractor_id': c.contractor_id,
+                'contractor_name': c.contractor_name,
+                'on_site': c.on_site,
+                'risk_level': c.risk_level.value,
+                'alerts': c.alerts
+            }
+            for c in contractors
+        ]
+    }
+
+
+@app.get("/api/audit/pending-reviews")
+async def get_pending_reviews():
+    """Get all decisions pending human review"""
+    reviews = audit_logger.get_pending_reviews()
+    return {
+        'count': len(reviews),
+        'reviews': [
+            {
+                'decision_id': r.decision_id,
+                'action': r.action.value,
+                'agent_name': r.agent_name,
+                'timestamp': r.timestamp.isoformat(),
+                'reasoning': r.reasoning,
+                'confidence': r.confidence
+            }
+            for r in reviews
+        ]
+    }
+
+
+@app.post("/api/audit/review/{decision_id}")
+async def review_decision(
+    decision_id: str,
+    reviewer: str,
+    override: Optional[bool] = None,
+    notes: Optional[str] = None
+):
+    """Mark a decision as reviewed by human"""
+    success = audit_logger.mark_reviewed(decision_id, reviewer, override, notes)
+    return {
+        'status': 'success' if success else 'not_found',
+        'decision_id': decision_id
+    }
+
+
+@app.get("/api/audit/statistics")
+async def get_audit_stats():
+    """Get audit trail statistics"""
+    return audit_logger.get_statistics()
+
+
+@app.get("/api/audit/export")
+async def export_audit_logs():
+    """Export audit logs for regulatory compliance"""
+    export_path = audit_logger.export_for_audit()
+    return {
+        'status': 'success',
+        'export_path': export_path,
+        'message': 'Audit logs exported for compliance review'
     }
 
 
