@@ -608,6 +608,243 @@ async def get_agent_statistics():
     }
 
 
+# ============================================================================
+# GOVERNANCE & QUALITY DASHBOARD - NYC 2026-2027 COMPLIANCE
+# ============================================================================
+
+from packages.monitoring import (
+    get_telemetry_service,
+    get_bias_auditor,
+    get_legal_sandbox,
+    get_immutable_logger,
+    AgentType
+)
+
+telemetry = get_telemetry_service()
+bias_auditor = get_bias_auditor()
+legal_sandbox = get_legal_sandbox()
+immutable_logger = get_immutable_logger()
+
+
+@app.get("/api/governance/dashboard")
+async def get_governance_dashboard():
+    """
+    Get comprehensive governance dashboard data
+    Includes agent flow accuracy, human override rates, cost attribution, and TTFT metrics
+    """
+    try:
+        return telemetry.get_dashboard_summary()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/governance/agent-flow-accuracy")
+async def get_agent_flow_accuracy(
+    agent_type: Optional[str] = None,
+    time_window_hours: int = 24
+):
+    """Get agent flow accuracy metrics"""
+    try:
+        agent = AgentType(agent_type) if agent_type else None
+        return telemetry.get_agent_flow_accuracy(agent, time_window_hours)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/governance/human-override-rate")
+async def get_human_override_rate(
+    agent_type: Optional[str] = None,
+    time_window_hours: int = 24
+):
+    """Get human-on-the-loop override rate"""
+    try:
+        agent = AgentType(agent_type) if agent_type else None
+        return telemetry.get_human_override_rate(agent, time_window_hours)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/governance/cost-attribution")
+async def get_cost_attribution(
+    agent_type: Optional[str] = None,
+    time_window_hours: int = 24
+):
+    """Get token cost attribution per agent"""
+    try:
+        agent = AgentType(agent_type) if agent_type else None
+        return telemetry.get_cost_attribution(agent, time_window_hours)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/governance/ttft-performance")
+async def get_ttft_performance(
+    agent_type: Optional[str] = None,
+    time_window_hours: int = 1
+):
+    """Get Time-to-First-Token performance metrics"""
+    try:
+        agent = AgentType(agent_type) if agent_type else None
+        return telemetry.get_ttft_stats(agent, time_window_hours)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/governance/bias-audit/latest")
+async def get_latest_bias_audit():
+    """Get the latest bias audit log (NYC Local Law 144 compliance)"""
+    try:
+        audit = bias_auditor.get_latest_audit()
+        if not audit:
+            return {'status': 'no_audits_yet', 'documents_pending': bias_auditor.documents_since_last_audit}
+        
+        return {
+            'audit_id': audit.audit_id,
+            'audit_timestamp': audit.audit_timestamp.isoformat(),
+            'documents_processed': audit.documents_processed,
+            'overall_bias_detected': audit.overall_bias_detected,
+            'avg_accuracy': audit.avg_accuracy,
+            'max_variance': audit.max_variance_across_groups,
+            'retraining_required': audit.retraining_required,
+            'retraining_reason': audit.retraining_reason,
+            'tests': [
+                {
+                    'test_type': t.test_type.value,
+                    'passed': t.passed,
+                    'bias_detected': t.bias_detected,
+                    'confidence': t.confidence_score,
+                    'variance': t.accuracy_variance
+                }
+                for t in audit.adversarial_tests
+            ],
+            'protected_characteristics_tested': audit.protected_characteristics_tested,
+            'human_review_flagged_count': len(audit.human_review_flagged),
+            'audit_hash': audit.audit_hash
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/governance/bias-audit/statistics")
+async def get_bias_audit_statistics():
+    """Get bias auditor statistics"""
+    try:
+        return bias_auditor.get_statistics()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/governance/legal-sandbox/pending")
+async def get_pending_legal_reviews():
+    """Get governance proofs awaiting legal review"""
+    try:
+        pending = legal_sandbox.get_pending_reviews()
+        return {
+            'count': len(pending),
+            'pending_reviews': [
+                {
+                    'proof_id': p.proof_id,
+                    'timestamp': p.timestamp.isoformat(),
+                    'content_type': p.content_type,
+                    'sandbox_status': p.sandbox_status.value,
+                    'risk_score': p.risk_score,
+                    'triggers_detected': len(p.triggers_detected),
+                    'send_blocked': p.send_blocked,
+                    'recipient': p.recipient_email
+                }
+                for p in pending
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/governance/legal-sandbox/approve/{proof_id}")
+async def approve_governance_proof(
+    proof_id: str,
+    reviewer_id: str,
+    notes: Optional[str] = None
+):
+    """Approve a governance proof for sending"""
+    try:
+        success = legal_sandbox.approve_proof(proof_id, reviewer_id, notes)
+        if success:
+            return {'status': 'approved', 'proof_id': proof_id}
+        else:
+            raise HTTPException(status_code=404, detail="Proof not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/governance/legal-sandbox/reject/{proof_id}")
+async def reject_governance_proof(
+    proof_id: str,
+    reviewer_id: str,
+    reason: str
+):
+    """Reject a governance proof"""
+    try:
+        success = legal_sandbox.reject_proof(proof_id, reviewer_id, reason)
+        if success:
+            return {'status': 'rejected', 'proof_id': proof_id}
+        else:
+            raise HTTPException(status_code=404, detail="Proof not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/governance/legal-sandbox/statistics")
+async def get_legal_sandbox_statistics():
+    """Get legal sandbox statistics"""
+    try:
+        return legal_sandbox.get_statistics()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/governance/immutable-log/verify")
+async def verify_immutable_log():
+    """Verify integrity of immutable audit log chain"""
+    try:
+        verified = immutable_logger.verify_chain()
+        stats = immutable_logger.get_statistics()
+        
+        return {
+            'chain_verified': verified,
+            'status': 'valid' if verified else 'tampered',
+            'statistics': stats
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/governance/immutable-log/export")
+async def export_immutable_log():
+    """Export immutable logs for regulatory audit"""
+    try:
+        import tempfile
+        import os
+        
+        # Create temp file for export
+        fd, filepath = tempfile.mkstemp(suffix='.json', prefix='audit-export-')
+        os.close(fd)
+        
+        exported_path = immutable_logger.export_for_audit(filepath)
+        
+        return {
+            'status': 'exported',
+            'filepath': exported_path,
+            'total_entries': len(immutable_logger.log_chain),
+            'chain_verified': immutable_logger.verify_chain()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
