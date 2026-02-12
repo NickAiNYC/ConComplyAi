@@ -37,7 +37,7 @@ class VendorCertification(BaseModel):
         description="Date the certification expires.",
     )
     is_valid: bool = Field(
-        ...,
+        default=True,
         description="Whether the certification is currently valid (not expired).",
     )
 
