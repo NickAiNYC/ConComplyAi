@@ -20,14 +20,14 @@ def read_readme():
 
 setup(
     name="concomplai",
-    version="1.0.0",
+    version="2.0.0",
     description="Construction Compliance AI - Multi-agent system for OSHA and NYC Building Code compliance",
     long_description=read_readme(),
     long_description_content_type="text/markdown",
     author="ConComplyAI Team",
     author_email="info@concomplai.ai",
     url="https://github.com/NickAiNYC/ConComplyAi",
-    packages=find_packages(include=['core', 'core.*', 'backend', 'backend.*']),
+    packages=find_packages(include=['core', 'core.*', 'backend', 'backend.*', 'concomplyai', 'concomplyai.*']),
     install_requires=read_requirements(),
     python_requires='>=3.12.0',
     classifiers=[
@@ -43,6 +43,7 @@ setup(
         'console_scripts': [
             'concomplai-api=core.api:main',
             'concomplai-worker=backend.celery_worker:main',
+            'concomplai-platform=concomplyai.api.app:main',
         ],
     },
     include_package_data=True,
