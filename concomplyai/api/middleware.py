@@ -11,6 +11,7 @@ from collections import defaultdict
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
+from starlette.types import ASGIApp
 
 from concomplyai.config.settings import get_settings
 
@@ -47,7 +48,7 @@ class TokenAuthMiddleware(BaseHTTPMiddleware):
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """In-memory per-IP rate limiter using a sliding window of one minute."""
 
-    def __init__(self, app: object) -> None:  # noqa: ANN001
+    def __init__(self, app: ASGIApp) -> None:
         super().__init__(app)  # type: ignore[arg-type]
         self._requests: dict[str, list[float]] = defaultdict(list)
         self._last_cleanup: float = time.monotonic()
