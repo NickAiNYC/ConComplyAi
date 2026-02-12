@@ -550,7 +550,7 @@ class LienWaiverAutomation:
 # CONVENIENCE FUNCTIONS
 # =============================================================================
 
-def quick_waiver_check(document_text: str) -> Dict[str, any]:
+def quick_waiver_check(document_text: str) -> Dict[str, Any]:
     """
     Quick lien waiver fraud check
     

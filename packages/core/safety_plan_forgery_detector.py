@@ -519,7 +519,7 @@ class SafetyPlanForgeryDetector:
 # CONVENIENCE FUNCTIONS
 # =============================================================================
 
-def quick_forgery_check(document_text: str) -> Dict[str, any]:
+def quick_forgery_check(document_text: str) -> Dict[str, Any]:
     """
     Quick safety plan forgery check
     

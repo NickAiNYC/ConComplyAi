@@ -483,7 +483,7 @@ def calculate_crane_daily_cost(crane_type: str = "tower_crane", hours_per_day: f
 def estimate_project_carbon_cost(
     project_phase: str,
     start_date: Optional[datetime] = None
-) -> Dict[str, any]:
+) -> Dict[str, Any]:
     """
     Estimate total carbon cost for a construction phase
     

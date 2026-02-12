@@ -534,7 +534,7 @@ def quick_facade_check(
     zipcode: str,
     cycle_start_date: datetime,
     current_rating: Optional[str] = None
-) -> Dict[str, any]:
+) -> Dict[str, Any]:
     """
     Quick facade compliance check
     
